@@ -9,6 +9,10 @@ const port = 3000;
 app.use(express.json());
 app.use(cors());
 
+app.listen(port, () => {
+  console.log(`Example app listening on port ${port}`);
+});
+
 app.get("/", (req, res) => {
   res.send("Hello World!");
 });
@@ -17,31 +21,31 @@ app.get("/sql", async (req, res) => {
   const row_values = await display_values();
   res.send(row_values);
 });
-app.listen(port, () => {
-  console.log(`Example app listening on port ${port}`);
+
+app.get("/campaigns", async (req, res) => {
+  const campaigns = await FetchAllCampaigns();
+  res.send(campaigns);
 });
 
-async function dbInstert() {
-  const test_insert = {
-    name: "Innsmouth Consparicy",
-    start_date: "2025-11-30",
-    status: "Finished",
+app.post("/campaigns", async (req, res) => {
+  const post_values = {
+    name: req.body.name,
+    start_date: req.body.start_date,
+    end_date: req.body.end_date,
+    status: req.body.status,
   };
+  await sql`insert into campaigns ${sql(post_values, "name", "start_date", "end_date", "status")}`;
 
-  await sql`
-insert into test_campaign ${sql(test_insert, "name", "start_date", "status")}`;
+  res.send(`${req.body.name} has been added to the DB!`);
+});
+
+async function FetchAllCampaigns() {
+  const select_campaigns = ["id", "name", "start_date", "end_date", "status"];
+
+  const campaigns = await sql`select ${sql(select_campaigns)} from campaigns`;
+
+  return campaigns;
 }
-
-async function display_values() {
-  const select_campaign = ["name", "start_date", "status"];
-
-  const return_test =
-    await sql`select ${sql(select_campaign)} from test_campaign`;
-
-  return return_test;
-}
-
-display_values();
 
 const update_value = {
   status: "Test",
@@ -53,4 +57,4 @@ async function update_values() {
   display_values();
 }
 
-update_values();
+//update_values();
