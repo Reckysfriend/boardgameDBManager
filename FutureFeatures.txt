@@ -1,0 +1,3 @@
+# Scenario Display
+ - If you have played scenarios make it so the list of scenarios are sorted in play order instead of default load order.
+ - Colors: Grey - Not started, Yellow - Started but not saved to DB, Green - Saved to DB
