@@ -1,47 +1,98 @@
-let all_Loaded_Campaigns = {};
-let all_Loaded_Scenarios = {};
+import { campaign_Scenario_Dictonary } from "./scenarios.js";
+export let all_Loaded_Campaigns = {};
+export let all_Loaded_Scenarios = {};
+
+LoadAllCampaigns();
+LoadAllScenarios();
 
 const container = document.getElementById("campaignDisplay");
 const title = document.getElementById("pageTitle");
 
-LoadAllCampaigns();
-LoadAllScenarios();
 async function LoadAllCampaigns() {
   const url = "http://localhost:3000/campaigns";
   const response = await fetch(url);
   const result = await response.json();
-
+  let newContent = "";
   result.forEach((campaign) => {
-    html = ` <div onClick="LoadSelectedCampaignByID(${campaign.id})" class="grid grid-rows-3">
-        <h1>${campaign.name}</h1>
-        <p id="start_date">Start Date: ${campaign.start_date}</p>
-        <p id="status">Status: ${campaign.status}</p>
-      </div>`;
-    container.insertAdjacentHTML("beforeend", html);
+    const newDiv = document.createElement("div");
+    newDiv.classList = "grid grid-rows-3 gap-1  bg-gray-200";
+
+    const newH1 = document.createElement("h1");
+    newContent = document.createTextNode(`${campaign.name}`);
+    newH1.appendChild(newContent);
+
+    const newP1 = document.createElement("p");
+    newContent = document.createTextNode(`Start Date: ${campaign.start_date}`);
+    newP1.appendChild(newContent);
+
+    const newP2 = document.createElement("p");
+    newContent = document.createTextNode(`Status: ${campaign.status}`);
+    newP2.appendChild(newContent);
+
+    newDiv.appendChild(newH1);
+    newDiv.appendChild(newP1);
+    newDiv.appendChild(newP2);
+    container.appendChild(newDiv);
+
+    newDiv.addEventListener("click", (e) => {
+      LoadSelectedCampaignByID(campaign.id);
+    });
   });
   all_Loaded_Campaigns = result;
 }
+
 async function LoadAllScenarios() {
   const url = "http://localhost:3000/scenarios";
   const response = await fetch(url);
   const result = await response.json();
   all_Loaded_Scenarios = result;
-  console.log(all_Loaded_Scenarios);
 }
 async function LoadSelectedCampaignByID(id) {
-  campaign = all_Loaded_Campaigns.find((campaigns) => campaigns.id == id);
+  container.innerHTML = "";
+  const selected_campaign = all_Loaded_Campaigns.find(
+    (campaigns) => campaigns.id == id,
+  );
   // Loop all scenarios and find all with a campaing ID matching our campaign ID
-  scenario = all_Loaded_Scenarios.filter(
+  const selected_scenarios = all_Loaded_Scenarios.filter(
     (scenarios) => scenarios.campaign_id == id,
   );
+  // Fetches the relevant scenarios from our dictionary
+  const select_Campaigns_Scenarios =
+    campaign_Scenario_Dictonary[selected_campaign.name];
 
-  container.innerHTML = "";
-  scenario.forEach((scenario) => {
-    html = `<div><h1>[${scenario.scenario_order}]${scenario.name} (Resolution:${scenario.resolution})</h1></div>`;
-    container.insertAdjacentHTML("beforeend", html);
+  // Loops through all scenarios in the campaign
+  select_Campaigns_Scenarios.forEach((scenario) => {
+    //Creates a div element to store the title of each scenario
+    const newDiv = document.createElement("div");
+    const newH1 = document.createElement("h1");
+    let newContent = "";
+    const played_Scenario = selected_scenarios.find(
+      (scenario_played) => scenario_played.name == scenario,
+    );
+    if (played_Scenario == undefined) {
+      newContent = document.createTextNode(scenario);
+      newH1.appendChild(newContent);
+      newDiv.classList = "bg-gray-200";
+    } else {
+      newContent = document.createTextNode(
+        `${scenario} (Resolution ${played_Scenario.resolution})`,
+      );
+      newH1.appendChild(newContent);
+      newDiv.classList = "bg-green-200";
+      newDiv.addEventListener("click", (e) => {
+        LoadSelectedScenarioByID(played_Scenario.id);
+      });
+    }
+
+    newDiv.appendChild(newH1);
+    container.appendChild(newDiv);
   });
 
-  title.innerHTML = campaign.name;
+  title.innerHTML = selected_campaign.name;
+}
+
+async function LoadSelectedScenarioByID(id) {
+  console.log("You have load the scenario with ID:" + id);
 }
 
 async function manual_scenario_input() {
