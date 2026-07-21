@@ -9,7 +9,7 @@ const container = document.getElementById("campaignDisplay");
 const title = document.getElementById("pageTitle");
 
 async function LoadAllCampaigns() {
-  const url = "http://localhost:3000/campaigns";
+  const url = "http://localhost:3000/arkhamlcg/campaigns";
   const response = await fetch(url);
   const result = await response.json();
   let newContent = "";
@@ -42,7 +42,7 @@ async function LoadAllCampaigns() {
 }
 
 async function LoadAllScenarios() {
-  const url = "http://localhost:3000/scenarios";
+  const url = "http://localhost:3000/arkhamlcg/scenarios";
   const response = await fetch(url);
   const result = await response.json();
   all_Loaded_Scenarios = result;
