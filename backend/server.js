@@ -19,7 +19,14 @@ app.get("/test", (req, res) => {
 
 app.get("/arkhamlcg/campaigns", async (req, res, next) => {
   try {
-    const select_campaigns = ["id", "name", "start_date", "end_date", "status"];
+    const select_campaigns = [
+      "id",
+      "name",
+      "start_date",
+      "end_date",
+      "status",
+      "is_legacy_status",
+    ];
     const campaigns = await FetchCampaigns(select_campaigns);
     res.send(campaigns);
   } catch (err) {
@@ -33,8 +40,9 @@ app.post("/arkhamlcg/campaigns", async (req, res) => {
     start_date: req.body.start_date,
     end_date: req.body.end_date,
     status: req.body.status,
+    is_legacy_status: req.body.is_legacy_status,
   };
-  await sql`insert into campaigns ${sql(post_values, "name", "start_date", "end_date", "status")}`;
+  await sql`insert into arkham_horror_lcg_campaigns ${sql(post_values, "name", "start_date", "end_date", "status", "is_legacy_status")}`;
 
   res.send(`${req.body.name} has been added to the DB!`);
 });

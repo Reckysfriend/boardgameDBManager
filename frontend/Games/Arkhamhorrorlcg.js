@@ -1,11 +1,11 @@
+// Fetches all Arkham Horror Campaigns from my backend
+const allCampaigns = await LoadAllCampaigns();
+// Gets a reference to the body element to be able to place our other elements
+const bodyElement = document.body;
+// Creates a container that holds all the new elements we need.
+const newContainer = document.createElement("div");
+newContainer.classList = "flex-1 h-screen";
 async function displayArkhamHorror() {
-  // Fetches all Arkham Horror Campaigns from my backend
-  const allCampaigns = await LoadAllCampaigns();
-  // Gets a reference to the body element to be able to place our other elements
-  const bodyElement = document.body;
-  // Creates a container that holds all the new elements we need.
-  const newContainer = document.createElement("div");
-  newContainer.classList = "flex-1 h-screen";
   // Create the Title object and allow it 20% of the screen
   const title = document.createElement("h1");
   const titelText = document.createTextNode(`${"Arkham Horror: LCG"}`);
@@ -28,21 +28,111 @@ async function displayArkhamHorror() {
   const addCampaignDialogTitleText = document.createTextNode("Add Campaign!");
   addCampaignDialogTitle.append(addCampaignDialogTitleText);
   addCampaignDialog.append(addCampaignDialogTitle);
+  // Form
+  const addCampaignForm = document.createElement("form");
+  addCampaignForm.id = "addcampaignform";
   // Campaign Dropdown
   const campaignNameDropDown = document.createElement("select");
-
+  campaignNameDropDown.name = "name";
+  allCampaignsName.forEach((campaign) => {
+    const campaignDropDown = document.createElement("option");
+    campaignDropDown.value = `${campaign}`;
+    const campaignDropDownValueText = document.createTextNode(`${campaign}`);
+    campaignDropDown.append(campaignDropDownValueText);
+    campaignNameDropDown.append(campaignDropDown);
+  });
+  addCampaignForm.append(campaignNameDropDown);
   // Start & End Date
+
+  // Crates a default value which is always todays date
+  const rawTodayDate = new Date();
+  let todayDate = rawTodayDate.toISOString();
+  todayDate = todayDate.slice(0, 10);
+  // Start Date
+  const addCampaignStartDateLabel = document.createElement("label");
+  addCampaignStartDateLabel.for = "startdate";
+  const addCampaignStartDateText = document.createTextNode("Start Date:");
+  addCampaignStartDateLabel.append(addCampaignStartDateText);
+  const addCampaignStartDateInput = document.createElement("input");
+  addCampaignStartDateInput.name = "start_date";
+  addCampaignStartDateInput.type = "date";
+  addCampaignStartDateInput.value = todayDate;
+  addCampaignStartDateInput.id = "startdate";
+
+  addCampaignForm.append(addCampaignStartDateLabel);
+  addCampaignForm.append(addCampaignStartDateInput);
+  // End Date
+  const addCampaignEndDateLabel = document.createElement("label");
+  addCampaignEndDateLabel.for = "enddate";
+  const addCampaignEndDateText = document.createTextNode("End Date:");
+  addCampaignEndDateLabel.append(addCampaignEndDateText);
+  const addCampaignEndDateInput = document.createElement("input");
+  addCampaignEndDateInput.name = "end_date";
+  addCampaignEndDateInput.type = "date";
+  addCampaignEndDateInput.id = "enddate";
+
+  addCampaignForm.append(addCampaignEndDateLabel);
+  addCampaignForm.append(addCampaignEndDateInput);
   // Status
-  // Legacy Statuts
+
+  const campaignStatusDropDown = document.createElement("select");
+  campaignStatusDropDown.name = "status";
+  //Playing
+  const campaignStatusPlaying = document.createElement("option");
+  campaignStatusPlaying.value = "Playing";
+  const campaignStatusPlayingValueText = document.createTextNode("Playing");
+
+  campaignStatusPlaying.append(campaignStatusPlayingValueText);
+  campaignStatusDropDown.append(campaignStatusPlaying);
+
+  //Finished
+  const campaignStatusFinished = document.createElement("option");
+  campaignStatusFinished.value = "Finished";
+  const campaignStatusFinishedValueText = document.createTextNode("Finished");
+
+  campaignStatusFinished.append(campaignStatusFinishedValueText);
+  campaignStatusDropDown.append(campaignStatusFinished);
+
+  //Add it to form
+  addCampaignForm.append(campaignStatusDropDown);
+  // Legacy Status
+  const campaignLegacyDropDown = document.createElement("select");
+  campaignLegacyDropDown.name = "is_legacy_status";
+
+  const campaignLegacyTrue = document.createElement("option");
+  campaignLegacyTrue.value = "True";
+  const campaignLegacyTrueValueText = document.createTextNode("True");
+
+  campaignLegacyTrue.append(campaignLegacyTrueValueText);
+  campaignLegacyDropDown.append(campaignLegacyTrue);
+
+  addCampaignForm.append(campaignLegacyDropDown);
+
+  const campaignLegacyFalse = document.createElement("option");
+  campaignLegacyFalse.value = "False";
+  const campaignLegacyFalseValueText = document.createTextNode("False");
+
+  campaignLegacyFalse.append(campaignLegacyFalseValueText);
+  campaignLegacyDropDown.append(campaignLegacyFalse);
+
+  addCampaignForm.append(campaignLegacyDropDown);
+  // Append form to modal
+  addCampaignDialog.append(addCampaignForm);
   // Close button elements
   const closeCampaignDialog = document.createElement("button");
   const closeCampaignDialogText = document.createTextNode("Close");
   closeCampaignDialog.addEventListener("click", () => {
     addCampaignDialog.close();
   });
-
   closeCampaignDialog.append(closeCampaignDialogText);
   addCampaignDialog.append(closeCampaignDialog);
+  // Sumbit button for form
+  const addCampaignSumbitButton = document.createElement("button");
+  const addCampaignSumbitButtonText = document.createTextNode("Submit");
+  addCampaignSumbitButton.append(addCampaignSumbitButtonText);
+  addCampaignSumbitButton.addEventListener("click", AddCampaign);
+  addCampaignDialog.append(addCampaignSumbitButton);
+  //Adds modal to body
   bodyElement.append(addCampaignDialog);
   // Create button for adding campaign and adding the modal from above to it
   const addButton = document.createElement("button");
@@ -134,7 +224,23 @@ async function LoadSelectedCampaignByID(id) {
   title.innerHTML = selected_campaign.name;
 }
 async function AddCampaign() {
-  console.log("Added campaign!");
+  const form = document.getElementById("addcampaignform");
+  const formData = new FormData(form);
+  const FormDataObject = Object.fromEntries(formData);
+
+  const url = "http://localhost:3000/arkhamlcg/campaigns";
+
+  const response = await fetch(url, {
+    method: "POST",
+    body: JSON.stringify(FormDataObject),
+    headers: {
+      "Content-Type": "application/json",
+    },
+  });
+  const res_message = await response.text();
+  console.log(res_message);
+  newContainer.innerHTML = "";
+  displayArkhamHorror();
 }
 
 export { displayArkhamHorror };
