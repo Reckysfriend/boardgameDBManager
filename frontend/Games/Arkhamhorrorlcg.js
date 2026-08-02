@@ -1,10 +1,20 @@
+// ------------------------------------------------------------ Global Variabls ------------------------------------------------------------ //
+// Holds the current campaign ID for navigation
+let currentSelectedCampaignID = null;
 // Fetches all Arkham Horror Campaigns from my backend
 const allCampaigns = await LoadAllCampaigns();
+async function LoadAllCampaigns() {
+  const url = "http://localhost:3000/arkhamlcg/campaigns";
+  const response = await fetch(url);
+  const result = await response.json();
+  return result;
+}
 // Gets a reference to the body element to be able to place our other elements
 const bodyElement = document.body;
 // Creates a container that holds all the new elements we need.
 const newContainer = document.createElement("div");
 newContainer.classList = "flex-1 h-screen";
+// ------------------------------------------------------------ Display All Campaigns ------------------------------------------------------------ //
 async function displayArkhamHorror() {
   // Create the Title object and allow it 20% of the screen
   const title = document.createElement("h1");
@@ -172,14 +182,7 @@ async function displayArkhamHorror() {
   newContainer.append(campaignList);
   bodyElement.append(newContainer);
 }
-
-async function LoadAllCampaigns() {
-  const url = "http://localhost:3000/arkhamlcg/campaigns";
-  const response = await fetch(url);
-  const result = await response.json();
-  return result;
-}
-
+// ------------------------------------------------------------ Display Selected Campaign by ID ------------------------------------------------------------ //
 async function LoadSelectedCampaignByID(id) {
   container.innerHTML = "";
   const selected_campaign = all_Loaded_Campaigns.find(
@@ -223,6 +226,7 @@ async function LoadSelectedCampaignByID(id) {
 
   title.innerHTML = selected_campaign.name;
 }
+// ------------------------------------------------------------ Add & Remove Campaigns ------------------------------------------------------------ //
 async function AddCampaign() {
   const form = document.getElementById("addcampaignform");
   const formData = new FormData(form);
@@ -242,10 +246,17 @@ async function AddCampaign() {
   newContainer.innerHTML = "";
   displayArkhamHorror();
 }
-
-export { displayArkhamHorror };
-
-// Arrays of  information from the game //
+// ------------------------------------------------------------ Add & Remove Scenario ------------------------------------------------------------ //
+async function AddScenario() {
+  // Pop up that shows all that campaigns scenarios, each standalone, each challange scenario.
+  // When you click on one it takes you to a form based on that scenario.
+  // -- Info needed --
+  // Player info
+  // Invest info
+  // Victory Display
+  // Campaign Log choices
+}
+// ------------------------------------------------------------ Arkham Horror Information ------------------------------------------------------------ //
 
 const allCampaignsName = [
   "The Night of the Zealot",
@@ -267,3 +278,193 @@ const allCampaignsName = [
   "Brethren of Ash",
   "Children of Blood",
 ];
+
+const arkhamInvestigators = [
+  // Core Set (2016 / Revised 2021)
+  "Roland Banks: The Fed",
+  "Daisy Walker: The Librarian",
+  '"Skids" O\'Toole: The Ex-Con',
+  "Agnes Baker: The Waitress",
+  "Wendy Adams: The Urchin",
+
+  // The Dunwich Legacy
+  "Zoey Samaras: The Chef",
+  "Rex Murphy: The Reporter",
+  "Jenny Barnes: The Dilettante",
+  "Jim Culver: The Musician",
+  '"Ashcan" Pete: The Drifter',
+
+  // The Path to Carcosa
+  "Mark Harrigan: The Soldier",
+  "Minh Thi Phan: The Secretary",
+  "Sefina Rousseau: The Painter",
+  "Akachi Onyele: The Shaman",
+  "William Yorick: The Gravedigger",
+  "Lola Hayes: The Actress",
+
+  // The Forgotten Age
+  "Leo Anderson: The Expedition Leader",
+  "Ursula Downs: The Explorer",
+  "Finn Edwards: The Bootlegger",
+  "Father Mateo: The Priest",
+  "Calvin Wright: The Haunted",
+
+  // The Circle Undone
+  "Carolyn Fern: The Psychologist",
+  "Joe Diamond: The Private Investigator",
+  "Preston Fairmont: The Millionaire",
+  "Diana Stanley: The Redeemed Cultist",
+  "Rita Young: The Athlete",
+  "Marie Lambeau: The Entertainer",
+
+  // The Dream-Eaters
+  "Tommy Muldoon: The Rookie Cop",
+  "Mandy Thompson: The Researcher",
+  "Tony Morgan: The Bounty Hunter",
+  "Luke Robinson: The Dreamer",
+  "Patrice Hathaway: The Violinist",
+
+  // The Innsmouth Conspiracy
+  "Sister Mary: The Nun",
+  "Amanda Sharpe: The Student",
+  "Trish Scarborough: The Spy",
+  "Dexter Drake: The Magician",
+  "Silas Marsh: The Sailor",
+
+  // Edge of the Earth
+  "Daniela Reyes: The Mechanic",
+  "Norman Withers: The Astronomer",
+  "Monterey Jack: The Archaeologist",
+  "Lily Chen: The Martial Artist",
+  "Bob Jenkins: The Salesman",
+
+  // Investigator Starter Decks
+  "Nathaniel Cho: The Boxer",
+  "Harvey Walters: The Professor",
+  "Winifred Habbamock: The Aviatrix",
+  "Jacqueline Fine: The Psychic",
+  "Stella Clark: The Letter Carrier",
+
+  // Promotional
+  "Gloria Goldberg: The Writer",
+
+  // The Scarlet Keys
+  "Carson Sinclair: The Butler",
+  "Vincent Lee: The Doctor",
+  "Kymani Jones: The Security Consultant",
+  "Amina Zidane: The Operator",
+  "Darrell Simmons: The Photographer",
+  "Charlie Kane: The Politician",
+
+  // The Feast of Hemlock Vale
+  "Wilson Richards: The Handyman",
+  "Kate Winthrop: The Scientist",
+  "Alessandra Zorzi: The Countess",
+  "Kōhaku Narukami: The Folklorist",
+  "Hank Samson: The Farmhand",
+
+  // The Drowned City
+  "Marion Tavares: The Trawler",
+  "Lucius Galloway: The Poet",
+  "Michael McGlen: The Gangster",
+  "Agatha Crane: The Parapsychologist",
+  "George Barnaby: The Lawyer",
+
+  // Chapter Two Core Set (2026 / Season 2)
+  "Isabelle Barnes: The Returned",
+  "Joe Diamond: The Private Investigator (Season 2)",
+  "Daniela Reyes: The Mechanic (Season 2)",
+  "Trish Scarborough: The Spy (Season 2)",
+  "Dexter Drake: The Magician (Season 2)",
+
+  // Chapter Two Investigator Decks (2026 / Season 2)
+  "Tommy Muldoon: The Officer",
+  "Carolyn Fern: The Psychologist (Season 2)",
+  "André Patel: The Film Star",
+  "Marie Lambeau: The Entertainer (Season 2)",
+  "Miguel de la Cruz: The Rancher",
+
+  // Parallel Investigators (full parallel, or front/back used independently)
+  "Daisy Walker: The Librarian (Parallel)",
+  "Daisy Walker: The Librarian (Parallel F)",
+  "Daisy Walker: The Librarian (Parallel B)",
+
+  '"Skids" O\'Toole: The Ex-Con (Parallel)',
+  '"Skids" O\'Toole: The Ex-Con (Parallel F)',
+  '"Skids" O\'Toole: The Ex-Con (Parallel B)',
+
+  "Agnes Baker: The Waitress (Parallel)",
+  "Agnes Baker: The Waitress (Parallel F)",
+  "Agnes Baker: The Waitress (Parallel B)",
+
+  "Roland Banks: The Fed (Parallel)",
+  "Roland Banks: The Fed (Parallel F)",
+  "Roland Banks: The Fed (Parallel B)",
+
+  "Wendy Adams: The Urchin (Parallel)",
+  "Wendy Adams: The Urchin (Parallel F)",
+  "Wendy Adams: The Urchin (Parallel B)",
+
+  '"Ashcan" Pete: The Drifter (Parallel)',
+  '"Ashcan" Pete: The Drifter (Parallel F)',
+  '"Ashcan" Pete: The Drifter (Parallel B)',
+
+  "Jim Culver: The Musician (Parallel)",
+  "Jim Culver: The Musician (Parallel F)",
+  "Jim Culver: The Musician (Parallel B)",
+
+  "Zoey Samaras: The Chef (Parallel)",
+  "Zoey Samaras: The Chef (Parallel F)",
+  "Zoey Samaras: The Chef (Parallel B)",
+
+  "Monterey Jack: The Archaeologist (Parallel)",
+  "Monterey Jack: The Archaeologist (Parallel F)",
+  "Monterey Jack: The Archaeologist (Parallel B)",
+
+  "Rex Murphy: The Reporter (Parallel)",
+  "Rex Murphy: The Reporter (Parallel F)",
+  "Rex Murphy: The Reporter (Parallel B)",
+
+  "Jenny Barnes: The Dilettante (Parallel)",
+  "Jenny Barnes: The Dilettante (Parallel F)",
+  "Jenny Barnes: The Dilettante (Parallel B)",
+
+  "Father Mateo: The Priest (Parallel)",
+  "Father Mateo: The Priest (Parallel F)",
+  "Father Mateo: The Priest (Parallel B)",
+
+  "Lola Hayes: The Actress (Parallel)",
+  "Lola Hayes: The Actress (Parallel F)",
+  "Lola Hayes: The Actress (Parallel B)",
+];
+// ------------------------------------------------------------ Nights of the Zealot ------------------------------------------------------------ //
+// ------------------------------------------------------------ Dunwich Legacy ------------------------------------------------------------ //
+const dunwichLegacyCampaign = [
+  "Extracurricular Activity",
+  "The House Always Wins",
+  "Interlude I: Armitage's Fate",
+  "The Miskatonic Museum",
+  "The Essex County Express",
+  "Blood on the Altar",
+  "Interlude II: The Survivors",
+  "Undimensioned and Unseen",
+  "Where Doom Awaits",
+  "Lost in Time and Space",
+];
+// >>>>> Extracurricular Activity <<<<< \\
+const extracurricularActivityEAV = [];
+// Victory Point
+const extracurricularActivityOrneLibrary = {
+  name: "Orne Library",
+  entity: "Location",
+  version: null,
+  triggerType: "default",
+  key: "xp_gained",
+  valueType: "int",
+  value: 1,
+};
+
+// If VP = Ture
+extracurricularActivityEAV.push(extracurricularActivityOrneLibrary);
+// ------------------------------------------------------------ Exports ------------------------------------------------------------ //
+export { displayArkhamHorror };
