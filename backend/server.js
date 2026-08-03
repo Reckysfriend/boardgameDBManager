@@ -19,15 +19,7 @@ app.get("/test", (req, res) => {
 
 app.get("/arkhamlcg/campaigns", async (req, res, next) => {
   try {
-    const select_campaigns = [
-      "id",
-      "name",
-      "start_date",
-      "end_date",
-      "status",
-      "is_legacy_status",
-    ];
-    const campaigns = await FetchCampaigns(select_campaigns);
+    const campaigns = await sql`select * from arkham_horror_lcg_campaigns`;
     res.send(campaigns);
   } catch (err) {
     next(err);
@@ -49,15 +41,19 @@ app.post("/arkhamlcg/campaigns", async (req, res) => {
 
 app.get("/arkhamlcg/scenarios", async (req, res, next) => {
   try {
-    const select_scenario = [
-      "id",
-      "campaign_id",
-      "name",
-      "scenario_order",
-      "resolution",
-      "play_location",
-    ];
-    const scenarios = await FetchScenarios(select_scenario);
+    const scenarios =
+      await sql`select * from arkham_horror_lcg_scenarios order by scenario_order asc`;
+    res.send(scenarios);
+  } catch (err) {
+    next(err);
+  }
+});
+
+app.get("/arkhamlcg/scenarios/:campaignID", async (req, res, next) => {
+  try {
+    const scenarios =
+      await sql`select * from arkham_horror_lcg_scenarios where campaign_id = ${req.params.campaignID}`;
+
     res.send(scenarios);
   } catch (err) {
     next(err);
@@ -77,19 +73,6 @@ app.post("/arkhamlcg/scenarios", async (req, res) => {
 
   res.send(`${req.body.name} has been added to the DB!`);
 });
-
-async function FetchCampaigns(selected_coulmns) {
-  const campaigns =
-    await sql`select ${sql(selected_coulmns)} from arkham_horror_lcg_campaigns`;
-
-  return campaigns;
-}
-async function FetchScenarios(selected_coulmns) {
-  const scenarios =
-    await sql`select ${sql(selected_coulmns)} from arkham_horror_lcg_scenarios order by scenario_order asc`;
-
-  return scenarios;
-}
 
 app.use(errorHandler);
 function errorHandler(err, req, res, next) {
