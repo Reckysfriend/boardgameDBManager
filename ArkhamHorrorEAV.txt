@@ -1,0 +1,22 @@
+// What type of object is this
+
+entity: 
+    location
+    enemy
+    elite_enemy
+    boss_enemy
+
+// What caused this card to be part of play
+
+triggerType:
+    default
+    choice
+    random
+    pre_scenario
+key:
+    xp_gained
+    skull_token_added
+    cultist_token_added
+    tablet_token_added
+    elderthing_token_added
+    ownership

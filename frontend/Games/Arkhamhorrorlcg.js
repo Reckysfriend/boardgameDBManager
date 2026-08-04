@@ -162,8 +162,7 @@ async function displayArkhamHorror() {
   const campaignList = document.createElement("ul");
   allCampaigns.forEach((campaign) => {
     const liElement = document.createElement("li");
-    liElement.classList =
-      "grid grid-cols-5 grid-rows-2 odd:bg-gray-300 even:bg-gray-200 hover:bg-green-100";
+    liElement.classList = "grid grid-cols-5 grid-rows-2 odd:bg-gray-300 even:bg-gray-200 hover:bg-green-100";
 
     liElement.addEventListener("click", () => {
       DisplaySelectedCampaignByID(campaign.id, campaign.name);
@@ -257,29 +256,15 @@ async function DisplaySelectedCampaignByID(id, name) {
   // Modal for new scenario
   const addScenarioDialog = document.createElement("dialog");
   const addScenarioH1 = document.createElement("h1");
-  const addScenarioH1Text = document.createTextNode(
-    "Choose the next scenario:",
-  );
+  const addScenarioH1Text = document.createTextNode("Choose the next scenario:");
   addScenarioH1.append(addScenarioH1Text);
   addScenarioDialog.append(addScenarioH1);
 
   const scenarioAddDropdown = document.createElement("select");
 
-  addDropdownWithOptGroups(
-    allCampaignScenarios[name],
-    scenarioAddDropdown,
-    name,
-  );
-  addDropdownWithOptGroups(
-    standaloneScenarios,
-    scenarioAddDropdown,
-    "Standalone",
-  );
-  addDropdownWithOptGroups(
-    challengeScenarios,
-    scenarioAddDropdown,
-    "Challange Scenarios",
-  );
+  addDropdownWithOptGroups(allCampaignScenarios[name], scenarioAddDropdown, name);
+  addDropdownWithOptGroups(standaloneScenarios, scenarioAddDropdown, "Standalone");
+  addDropdownWithOptGroups(challengeScenarios, scenarioAddDropdown, "Challange Scenarios");
   addScenarioDialog.append(scenarioAddDropdown);
   //Confirm Button
   const confirmButton = document.createElement("button");
@@ -324,6 +309,7 @@ async function AddCampaign() {
 }
 // ------------------------------------------------------------ Add & Remove Scenario ------------------------------------------------------------ //
 function AddScenarioToCampaign() {}
+let entityAttributeValueObject = [];
 async function AddScenario(scenario, campaign) {
   // Pop up that shows all that campaigns scenarios, each standalone, each challange scenario.
   // When you click on one it takes you to a form based on that scenario.
@@ -332,7 +318,37 @@ async function AddScenario(scenario, campaign) {
   // Invest info
   // Victory Display
   // Campaign Log choices
+
   console.log(`${campaign}: ${scenario}`);
+  const victoryDisplay = allScenarioResolutions[campaign][scenario].victoryDisplay;
+  clearScreen();
+  const victoryDisplayArea = document.createElement("div");
+  victoryDisplayArea.classList = "flex h-1/2 overflow-x-auto gap-2";
+  victoryDisplay.forEach((victory) => {
+    const img = document.createElement("img");
+    img.classList = "max-w max-h flex-shrink-0 grayscale";
+    img.addEventListener("click", () => {
+      const classes = img.classList;
+      classes.toggle("grayscale");
+      console.log(`Start of EAV: ${victory.id}`);
+      const victoryDisplayID = entityAttributeValueObject.find((entity) => entity.UUID == victory.UUID);
+      console.log(victoryDisplayID);
+      if (victoryDisplayID == undefined) {
+        console.log(`Push: ${victory.id}`);
+        entityAttributeValueObject.push(victory);
+
+        console.log(entityAttributeValueObject);
+      } else {
+        entityAttributeValueObject = entityAttributeValueObject.filter((entity) => entity.UUID !== victory.UUID);
+        console.log(`Removed: ${victory.name}`);
+        console.log(entityAttributeValueObject);
+      }
+    });
+    img.src = `/img/arkham_horror_lcg/Victory Display/${victory.img}`;
+    victoryDisplayArea.append(img);
+  });
+  newContainer.append(victoryDisplayArea);
+  const test = document.Elementby;
 }
 // ------------------------------------------------------------ Utility Functions ------------------------------------------------------------ //
 function clearScreen() {
@@ -367,6 +383,108 @@ const emptyEAVObject = {
 
   img: ".jpg",
 };
+// ------------------------------------------------------------ All Campaigns ------------------------------------------------------------ //
+function generateCampaignLogEntry(trigger, entryPos, entryValue) {
+  const log = {
+    name: "Campaign Log",
+    entity: "campaign_log",
+    version: null,
+    triggerType: `${trigger}`,
+    key: `${entryPos}`,
+    valueType: "string",
+    value: `${entryValue}`,
+    UUID: self.crypto.randomUUID(),
+  };
+  return log;
+}
+function generateChaosTokenEntry(tokenName, trigger, amount) {
+  const token = {
+    name: `${tokenName.charAt(0).toUpperCase() + tokenName.slice(1)}`,
+    entity: "chaos_token",
+    version: null,
+    triggerType: `${trigger}`,
+    key: `${tokenName}_token_added`,
+    valueType: "int",
+    value: amount,
+    UUID: self.crypto.randomUUID(),
+  };
+  return token;
+}
+function generateBonusExperianceEntry(trigger, amount) {
+  const bxp = {
+    name: "Bonus Experiance",
+    entity: "bonus_xp",
+    version: null,
+    triggerType: `${trigger}`,
+    key: "xp_gained",
+    valueType: "int",
+    value: amount,
+    UUID: self.crypto.randomUUID(),
+  };
+  return bxp;
+}
+function generateVictoryPoint(name, entity, version, trigger, amount, img) {
+  const vp = {
+    name: `${name}`,
+    entity: `${entity}`,
+    version: `${version}`,
+    triggerType: `${trigger}`,
+    key: "xp_gained",
+    valueType: "int",
+    value: amount,
+
+    img: `${img}.jpg`,
+    UUID: self.crypto.randomUUID(),
+  };
+  return vp;
+}
+function generateStoryAssetOwnership(name, version, trigger, img) {
+  const card = {
+    name: `${name}`,
+    entity: "story_asset",
+    version: `${version}`,
+    triggerType: `${trigger}`,
+    key: "ownership",
+    valueType: "string",
+    value: "",
+
+    img: `${img}.jpg`,
+    UUID: self.crypto.randomUUID(),
+  };
+}
+// ------------------------------------------------------------ Non-boss Victory Point ------------------------------------------------------------ //
+const victoryDisplayYithianObserver = {
+  name: "Yithian Observer",
+  entity: "enemy",
+  version: null,
+  triggerType: "default",
+  key: "xp_gained",
+  valueType: "int",
+  value: 1,
+
+  img: "01177.jpg",
+  UUID: self.crypto.randomUUID(),
+};
+const victoryDisplayWizardofYogSothoth = {
+  name: "Wizard of Yog-Sothoth",
+  entity: "enemy",
+  version: null,
+  triggerType: "default",
+  key: "xp_gained",
+  valueType: "int",
+  value: 1,
+
+  img: "02087.jpg",
+  UUID: self.crypto.randomUUID(),
+};
+
+// ------------------------------------------------------------ Common Entries ------------------------------------------------------------ //
+const addOneSkullTokenResolution = generateChaosTokenEntry("skull", "resolution", 1);
+const addOneCultistTokenResolution = generateChaosTokenEntry("cultist", "resolution", 1);
+const addOneTabletTokenResolution = generateChaosTokenEntry("tablet", "resolution", 1);
+const addOneElderThingTokenResolution = generateChaosTokenEntry("elderthing", "resolution", 1);
+
+const earnOneBonusExperianceResolution = generateBonusExperianceEntry("resolution", 1);
 // ------------------------------------------------------------ Nights of the Zealot ------------------------------------------------------------ //
 // ------------------------------------------------------------ Dunwich Legacy ------------------------------------------------------------ //
 const dunwichLegacyCampaign = [
@@ -383,91 +501,43 @@ const dunwichLegacyCampaign = [
 ];
 
 // >>>>> Extracurricular Activity <<<<< \\
-const extracurricularActivityEAV = [];
-// Victory Point
-const extracurricularActivityYithianObserver = {
-  name: "Yithian Observer",
-  entity: "enemy",
-  version: null,
-  triggerType: "default",
-  key: "xp_gained",
-  valueType: "int",
-  value: 1,
 
-  img: "01177.jpg",
-};
-const extracurricularActivityOrneLibrary = {
-  name: "Orne Library",
-  entity: "location",
-  version: null,
-  triggerType: "default",
-  key: "xp_gained",
-  valueType: "int",
-  value: 1,
-
-  img: "02050.jpg",
-};
-
-const extracurricularActivityDormitories = {
-  name: "Dormitories",
-  entity: "location",
-  version: null,
-  triggerType: "default",
-  key: "xp_gained",
-  valueType: "int",
-  value: 1,
-
-  img: "02052.jpg",
-};
-
-const extracurricularActivityFacultyOffices = {
-  name: "Faculty Offices",
-  entity: "location",
-  version: "The Night is Still Young",
-  triggerType: "choice",
-  key: "xp_gained",
-  valueType: "int",
-  value: 1,
-
-  img: "02054.jpg",
-};
-
-const extracurricularActivityTheExperiment = {
-  name: "The Experiment",
-  entity: "boss",
-  version: "Something Went Terribly Wrong",
-  triggerType: "default",
-  key: "xp_gained",
-  valueType: "int",
-  value: 2,
-
-  img: "02058.jpg",
-};
-
-const extracurricularActivityWizardofYogSothoth = {
-  name: "Wizard of Yog-Sothoth",
-  entity: "enemy",
-  version: null,
-  triggerType: "default",
-  key: "xp_gained",
-  valueType: "int",
-  value: 1,
-
-  img: "02087.jpg",
-};
-
+const extracurricularActivityProfessorWarrenKidnapped = generateCampaignLogEntry("resolution", "1", "Professor Warren Rice was kidnapped");
+const extracurricularActivityFailedStudents = generateCampaignLogEntry("resolution", "2", "the investigators failed to save the students");
 const dunwichLegacyResolution = {
   "Extracurricular Activity": {
     victoryDisplay: [
-      extracurricularActivityYithianObserver,
-      extracurricularActivityYithianObserver,
-      extracurricularActivityOrneLibrary,
-      extracurricularActivityDormitories,
-      extracurricularActivityFacultyOffices,
-      extracurricularActivityTheExperiment,
-      extracurricularActivityWizardofYogSothoth,
+      victoryDisplayYithianObserver,
+      victoryDisplayYithianObserver,
+      generateVictoryPoint("Orne Library", "location", null, "default", 1, "02050"),
+      generateVictoryPoint("Dormitories", "location", null, "default", 1, "02052"),
+      generateVictoryPoint("Faculty Offices", "location", "The Night is Still Young", "choice", 1, "02054"),
+      generateVictoryPoint("The Experiment", "boss", null, "default", 2, "02058"),
+      victoryDisplayWizardofYogSothoth,
     ],
-    resolution: [],
+    resolution: {
+      0: [
+        extracurricularActivityProfessorWarrenKidnapped,
+        extracurricularActivityFailedStudents,
+        addOneTabletTokenResolution,
+        earnOneBonusExperianceResolution,
+      ],
+      1: [
+        generateCampaignLogEntry("resolution", 1, "the investigators rescued Professor Warren Rice"),
+        generateStoryAssetOwnership("Professor Warren Rice", "Professor of Languages", "resolution", "02061"),
+        extracurricularActivityFailedStudents,
+        addOneTabletTokenResolution,
+      ],
+      2: [extracurricularActivityProfessorWarrenKidnapped, generateCampaignLogEntry("resolution", 1, "the students were rescued")],
+      3: [extracurricularActivityProfessorWarrenKidnapped, generateCampaignLogEntry("resolution", 1, "the Experiment was defeated")],
+      4: [
+        generateCampaignLogEntry("resolution", 1, "the investigators were unconscious for several hours"),
+        extracurricularActivityProfessorWarrenKidnapped,
+        earnOneBonusExperianceResolution,
+        extracurricularActivityFailedStudents,
+        addOneTabletTokenResolution,
+      ],
+    },
   },
   "The House Always Wins": {
     victoryDisplayLocations: [],
@@ -502,7 +572,7 @@ const allCampaignScenarios = {
   "The Path to Carcosa": [],
 };
 const allScenarioResolutions = {
-  "Dunwich Legacy": dunwichLegacyResolution,
+  "The Dunwich Legacy": dunwichLegacyResolution,
 };
 const arkhamInvestigators = [
   // Core Set (2016 / Revised 2021)
