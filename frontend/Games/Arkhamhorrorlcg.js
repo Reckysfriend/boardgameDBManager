@@ -323,7 +323,7 @@ async function AddScenario(scenario, campaign) {
   const victoryDisplay = allScenarioResolutions[campaign][scenario].victoryDisplay;
   clearScreen();
   const victoryDisplayArea = document.createElement("div");
-  victoryDisplayArea.classList = "flex h-1/2 overflow-x-auto gap-2";
+  victoryDisplayArea.classList = "flex h-1/3 overflow-x-auto gap-2";
   victoryDisplay.forEach((victory) => {
     const img = document.createElement("img");
     img.classList = "max-w max-h flex-shrink-0 grayscale";
@@ -334,14 +334,9 @@ async function AddScenario(scenario, campaign) {
       const victoryDisplayID = entityAttributeValueObject.find((entity) => entity.UUID == victory.UUID);
       console.log(victoryDisplayID);
       if (victoryDisplayID == undefined) {
-        console.log(`Push: ${victory.id}`);
         entityAttributeValueObject.push(victory);
-
-        console.log(entityAttributeValueObject);
       } else {
         entityAttributeValueObject = entityAttributeValueObject.filter((entity) => entity.UUID !== victory.UUID);
-        console.log(`Removed: ${victory.name}`);
-        console.log(entityAttributeValueObject);
       }
     });
     img.src = `/img/arkham_horror_lcg/Victory Display/${victory.img}`;
@@ -453,31 +448,8 @@ function generateStoryAssetOwnership(name, version, trigger, img) {
   };
 }
 // ------------------------------------------------------------ Non-boss Victory Point ------------------------------------------------------------ //
-const victoryDisplayYithianObserver = {
-  name: "Yithian Observer",
-  entity: "enemy",
-  version: null,
-  triggerType: "default",
-  key: "xp_gained",
-  valueType: "int",
-  value: 1,
-
-  img: "01177.jpg",
-  UUID: self.crypto.randomUUID(),
-};
-const victoryDisplayWizardofYogSothoth = {
-  name: "Wizard of Yog-Sothoth",
-  entity: "enemy",
-  version: null,
-  triggerType: "default",
-  key: "xp_gained",
-  valueType: "int",
-  value: 1,
-
-  img: "02087.jpg",
-  UUID: self.crypto.randomUUID(),
-};
-
+const victoryDisplayWizardofYogSothoth = generateVictoryPoint("Wizard of Yog-Sothoth", "enemy", null, "default", 1, "02087");
+const victoryDisplayYithianObserver = generateVictoryPoint("Yithian Observer", "enemy", null, "default", 1, "01177");
 // ------------------------------------------------------------ Common Entries ------------------------------------------------------------ //
 const addOneSkullTokenResolution = generateChaosTokenEntry("skull", "resolution", 1);
 const addOneCultistTokenResolution = generateChaosTokenEntry("cultist", "resolution", 1);
