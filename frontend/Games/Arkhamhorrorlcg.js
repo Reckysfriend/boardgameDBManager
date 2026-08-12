@@ -54,95 +54,29 @@ async function displayArkhamHorror() {
   });
   addCampaignForm.append(campaignNameDropDown);
   // Start & End Date
+  createAppendableDateObject("start_date", "Start Date:", "start_date", addCampaignForm);
+  createAppendableDateObject("end_date", "End Date:", "end_date", addCampaignForm);
+  // Playing Status
+  const campaignPlayingStatusArray = [
+    { Name: "Playing", Value: "Playing" },
+    { Name: "Finished", Value: "Finished" },
+    { Name: "Abandoned", Value: "Abandoned" },
+  ];
+  createAppendableDropdownObject("playing_status", campaignPlayingStatusArray, addCampaignForm);
 
-  // Crates a default value which is always todays date
-  const rawTodayDate = new Date();
-  let todayDate = rawTodayDate.toISOString();
-  todayDate = todayDate.slice(0, 10);
-  // Start Date
-  const addCampaignStartDateLabel = document.createElement("label");
-  addCampaignStartDateLabel.for = "startdate";
-  const addCampaignStartDateText = document.createTextNode("Start Date:");
-  addCampaignStartDateLabel.append(addCampaignStartDateText);
-  const addCampaignStartDateInput = document.createElement("input");
-  addCampaignStartDateInput.name = "start_date";
-  addCampaignStartDateInput.type = "date";
-  addCampaignStartDateInput.value = todayDate;
-  addCampaignStartDateInput.id = "startdate";
-
-  addCampaignForm.append(addCampaignStartDateLabel);
-  addCampaignForm.append(addCampaignStartDateInput);
-  // End Date
-  const addCampaignEndDateLabel = document.createElement("label");
-  addCampaignEndDateLabel.for = "enddate";
-  const addCampaignEndDateText = document.createTextNode("End Date:");
-  addCampaignEndDateLabel.append(addCampaignEndDateText);
-  const addCampaignEndDateInput = document.createElement("input");
-  addCampaignEndDateInput.name = "end_date";
-  addCampaignEndDateInput.type = "date";
-  addCampaignEndDateInput.id = "enddate";
-
-  addCampaignForm.append(addCampaignEndDateLabel);
-  addCampaignForm.append(addCampaignEndDateInput);
-  // Status
-
-  const campaignStatusDropDown = document.createElement("select");
-  campaignStatusDropDown.name = "status";
-  //Playing
-  const campaignStatusPlaying = document.createElement("option");
-  campaignStatusPlaying.value = "Playing";
-  const campaignStatusPlayingValueText = document.createTextNode("Playing");
-
-  campaignStatusPlaying.append(campaignStatusPlayingValueText);
-  campaignStatusDropDown.append(campaignStatusPlaying);
-
-  //Finished
-  const campaignStatusFinished = document.createElement("option");
-  campaignStatusFinished.value = "Finished";
-  const campaignStatusFinishedValueText = document.createTextNode("Finished");
-
-  campaignStatusFinished.append(campaignStatusFinishedValueText);
-  campaignStatusDropDown.append(campaignStatusFinished);
-
-  //Add it to form
-  addCampaignForm.append(campaignStatusDropDown);
   // Legacy Status
-  const campaignLegacyDropDown = document.createElement("select");
-  campaignLegacyDropDown.name = "is_legacy_status";
+  const campaignStatusArray = [
+    { Name: "True", Value: "True" },
+    { Name: "False", Value: "False" },
+  ];
+  createAppendableDropdownObject("is_legacy_status", campaignStatusArray, addCampaignForm);
 
-  const campaignLegacyTrue = document.createElement("option");
-  campaignLegacyTrue.value = "True";
-  const campaignLegacyTrueValueText = document.createTextNode("True");
-
-  campaignLegacyTrue.append(campaignLegacyTrueValueText);
-  campaignLegacyDropDown.append(campaignLegacyTrue);
-
-  addCampaignForm.append(campaignLegacyDropDown);
-
-  const campaignLegacyFalse = document.createElement("option");
-  campaignLegacyFalse.value = "False";
-  const campaignLegacyFalseValueText = document.createTextNode("False");
-
-  campaignLegacyFalse.append(campaignLegacyFalseValueText);
-  campaignLegacyDropDown.append(campaignLegacyFalse);
-
-  addCampaignForm.append(campaignLegacyDropDown);
   // Append form to modal
   addCampaignDialog.append(addCampaignForm);
   // Close button elements
-  const closeCampaignDialog = document.createElement("button");
-  const closeCampaignDialogText = document.createTextNode("Close");
-  closeCampaignDialog.addEventListener("click", () => {
-    addCampaignDialog.close();
-  });
-  closeCampaignDialog.append(closeCampaignDialogText);
-  addCampaignDialog.append(closeCampaignDialog);
+  createAppendableButtonObject("Close", addCampaignDialog, () => closeModal(addCampaignDialog), "");
   // Sumbit button for form
-  const addCampaignSumbitButton = document.createElement("button");
-  const addCampaignSumbitButtonText = document.createTextNode("Submit");
-  addCampaignSumbitButton.append(addCampaignSumbitButtonText);
-  addCampaignSumbitButton.addEventListener("click", AddCampaign);
-  addCampaignDialog.append(addCampaignSumbitButton);
+  createAppendableButtonObject("Submit", addCampaignDialog, AddCampaign, "");
   //Adds modal to body
   bodyElement.append(addCampaignDialog);
   // Create button for adding campaign and adding the modal from above to it
@@ -307,6 +241,11 @@ async function AddCampaign() {
   newContainer.innerHTML = "";
   displayArkhamHorror();
 }
+// ------------------------------------------------------------ Add & Remove Players ------------------------------------------------------------ //
+// Dropdown for all investigators
+// Dropdown for all players
+// Textbox for deck ID (Full length and just ID)
+
 // ------------------------------------------------------------ Add & Remove Scenario ------------------------------------------------------------ //
 function AddScenarioToCampaign() {}
 let entityAttributeValueObject = [];
@@ -318,7 +257,9 @@ async function AddScenario(scenario, campaign) {
   // Invest info
   // Victory Display
   // Campaign Log choices
-
+  BuildAddScenarioVictoryDisplayScreen(scenario, campaign);
+}
+async function BuildAddScenarioVictoryDisplayScreen(scenario, campaign) {
   console.log(`${campaign}: ${scenario}`);
   const victoryDisplay = allScenarioResolutions[campaign][scenario].victoryDisplay;
   clearScreen();
@@ -366,7 +307,47 @@ function addDropdownWithOptGroups(array, selectElement, optName) {
   });
   selectElement.append(optgroup);
 }
+function createAppendableButtonObject(text, parentObject, func, classList) {
+  const button = document.createElement("button");
+  button.append(document.createTextNode(text));
+  button.classList = classList;
+  button.addEventListener("click", () => {
+    func();
+  });
+  parentObject.append(button);
+}
+function closeModal(modal) {
+  modal.close();
+}
+function createAppendableDropdownObject(name, optionsArray, parentObject) {
+  const dropdown = document.createElement("select");
+  dropdown.name = name;
+  optionsArray.forEach((option) => {
+    const newOption = document.createElement("option");
+    newOption.value = option.Value;
+    newOption.append(document.createTextNode(option.Name));
 
+    dropdown.append(newOption);
+  });
+  parentObject.append(dropdown);
+}
+function createAppendableDateObject(id, dateText, name, parentObject) {
+  // Creates a default value which is always todays date
+  const rawTodayDate = new Date();
+  let todayDate = rawTodayDate.toISOString();
+  todayDate = todayDate.slice(0, 10);
+
+  const label = document.createElement("label");
+  label.for = id;
+  label.append(document.createTextNode(dateText));
+  const input = document.createElement("input");
+  input.name = name;
+  input.type = "date";
+  input.id = id;
+
+  parentObject.append(label);
+  parentObject.append(input);
+}
 const emptyEAVObject = {
   name: "",
   entity: "",
