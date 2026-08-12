@@ -3,6 +3,8 @@
 let currentSelectedCampaignID = null;
 // Fetches all Arkham Horror Campaigns from my backend
 const allCampaigns = await LoadAllCampaigns();
+// Fetches all listed players in DB
+const allPlayers = await FetchAllPlayers();
 // Creates a container that holds all the new elements we need.
 const newContainer = document.createElement("div");
 newContainer.classList = "flex-1 h-screen";
@@ -10,13 +12,21 @@ async function LoadAllCampaigns() {
   const url = "http://localhost:3000/arkhamlcg/campaigns";
   const response = await fetch(url);
   const result = await response.json();
+  console.log(result);
+  return result;
+}
+async function FetchAllPlayers() {
+  const url = "http://localhost:3000/players";
+  const response = await fetch(url);
+  const result = await response.json();
+  console.log(result);
   return result;
 }
 // Gets a reference to the body element to be able to place our other elements
 const bodyElement = document.body;
 
 // ------------------------------------------------------------ Display All Campaigns ------------------------------------------------------------ //
-async function displayArkhamHorror() {
+async function displayArkhamHorrorCampaigns() {
   // Create the Title object and allow it 20% of the screen
   const title = document.createElement("h1");
   const titelText = document.createTextNode(`${"Arkham Horror: LCG"}`);
@@ -32,64 +42,15 @@ async function displayArkhamHorror() {
   searchbarText.classList = "text-left text-white bg-slate-950";
 
   searchbarText.append(text);
-  //Create modal for adding campaigns
-  const addCampaignDialog = document.createElement("dialog");
-  // Title elements
-  const addCampaignDialogTitle = document.createElement("h1");
-  const addCampaignDialogTitleText = document.createTextNode("Add Campaign!");
-  addCampaignDialogTitle.append(addCampaignDialogTitleText);
-  addCampaignDialog.append(addCampaignDialogTitle);
-  // Form
-  const addCampaignForm = document.createElement("form");
-  addCampaignForm.id = "addcampaignform";
-  // Campaign Dropdown
-  const campaignNameDropDown = document.createElement("select");
-  campaignNameDropDown.name = "name";
-  allCampaignsName.forEach((campaign) => {
-    const campaignDropDown = document.createElement("option");
-    campaignDropDown.value = `${campaign}`;
-    const campaignDropDownValueText = document.createTextNode(`${campaign}`);
-    campaignDropDown.append(campaignDropDownValueText);
-    campaignNameDropDown.append(campaignDropDown);
-  });
-  addCampaignForm.append(campaignNameDropDown);
-  // Start & End Date
-  createAppendableDateObject("start_date", "Start Date:", "start_date", addCampaignForm);
-  createAppendableDateObject("end_date", "End Date:", "end_date", addCampaignForm);
-  // Playing Status
-  const campaignPlayingStatusArray = [
-    { Name: "Playing", Value: "Playing" },
-    { Name: "Finished", Value: "Finished" },
-    { Name: "Abandoned", Value: "Abandoned" },
-  ];
-  createAppendableDropdownObject("playing_status", campaignPlayingStatusArray, addCampaignForm);
-
-  // Legacy Status
-  const campaignStatusArray = [
-    { Name: "True", Value: "True" },
-    { Name: "False", Value: "False" },
-  ];
-  createAppendableDropdownObject("is_legacy_status", campaignStatusArray, addCampaignForm);
-
-  // Append form to modal
-  addCampaignDialog.append(addCampaignForm);
-  // Close button elements
-  createAppendableButtonObject("Close", addCampaignDialog, () => closeModal(addCampaignDialog), "");
-  // Sumbit button for form
-  createAppendableButtonObject("Submit", addCampaignDialog, AddCampaign, "");
   //Adds modal to body
-  bodyElement.append(addCampaignDialog);
-  // Create button for adding campaign and adding the modal from above to it
-  const addButton = document.createElement("button");
-  const addText = document.createTextNode("+");
-  addButton.classList = "bg-green-200 hover:bg-green-300";
-  addButton.addEventListener("click", () => {
-    addCampaignDialog.showModal();
-  });
+  const modal = createAddCampaignModal();
+  bodyElement.append(modal);
+  // Create button for adding campaign
+  const addButtonClassList = "bg-green-200 hover:bg-green-300";
+  createAppendableButtonObject("+", searchbarDiv, () => showModal(modal), addButtonClassList);
 
-  addButton.append(addText);
+  // Appends objects to div
   searchbarDiv.append(searchbarText);
-  searchbarDiv.append(addButton);
   newContainer.append(searchbarDiv);
 
   //Create a list element and fill it with each campaign from DB
@@ -239,7 +200,77 @@ async function AddCampaign() {
   const res_message = await response.text();
   console.log(res_message);
   newContainer.innerHTML = "";
-  displayArkhamHorror();
+  displayArkhamHorrorCampaigns();
+}
+function createAddCampaignModal() {
+  //Create modal for adding campaigns
+  const modal = document.createElement("dialog");
+  // Title elements
+  const modalTitle = document.createElement("h1");
+  modalTitle.append(document.createTextNode("Campaign"));
+  modal.append(modalTitle);
+
+  let campaignDiv = document.createElement("div");
+  let playerDiv = document.createElement("div");
+  playerDiv.classList = "hidden";
+
+  createCampaignDiv(modal, campaignDiv, playerDiv);
+  modal.append(campaignDiv);
+
+  createPlayerDiv(modal, campaignDiv, playerDiv);
+  modal.append(playerDiv);
+
+  return modal;
+}
+function swapModal(campaign, player) {
+  const campaignClassList = campaign.classList;
+  const playerClassList = player.classList;
+
+  campaignClassList.toggle("hidden");
+  playerClassList.toggle("hidden");
+}
+function createCampaignDiv(modal, campaignDiv, playerDiv) {
+  const form = createFormObject("addcampaignform");
+  // Campaign Dropdown
+  const allCampaingsCovertedArray = [];
+  allCampaignsName.forEach((campaign) => {
+    const campaignObject = { Name: campaign, Value: campaign };
+    allCampaingsCovertedArray.push(campaignObject);
+  });
+  createAppendableDropdownObject("Campaign:", allCampaingsCovertedArray, form);
+  // Start & End Date
+  createAppendableDateObject("start_date", "Start Date:", "start_date", form);
+  createAppendableDateObject("end_date", "End Date:", "end_date", form);
+  // Playing Status
+  const campaignPlayingStatusArray = [
+    { Name: "Playing", Value: "Playing" },
+    { Name: "Finished", Value: "Finished" },
+    { Name: "Abandoned", Value: "Abandoned" },
+  ];
+  createAppendableDropdownObject("playing_status", campaignPlayingStatusArray, form);
+  // Legacy Status
+  const campaignStatusArray = [
+    { Name: "True", Value: "True" },
+    { Name: "False", Value: "False" },
+  ];
+  createAppendableDropdownObject("is_legacy_status", campaignStatusArray, form);
+  // Append form to modal
+  campaignDiv.append(form);
+  // Close button elements
+  createAppendableButtonObject("Close", campaignDiv, () => closeModal(modal), "");
+  // Next page button for form
+  createAppendableButtonObject("->", campaignDiv, () => swapModal(campaignDiv, playerDiv), "");
+}
+function createPlayerDiv(modal, campaignDiv, playerDiv) {
+  const addPlayerForm = createFormObject("addplayerform");
+  createAppendableDropdownObject("Investigators: ", arkhamInvestigators, addPlayerForm);
+  createAppendableDropdownObject("Players: ", allPlayers, addPlayerForm);
+  playerDiv.append(addPlayerForm);
+
+  // Next page button for form
+  createAppendableButtonObject("<-", playerDiv, () => swapModal(campaignDiv, playerDiv), "");
+  // Close button elements
+  createAppendableButtonObject("Close", playerDiv, () => closeModal(modal), "");
 }
 // ------------------------------------------------------------ Add & Remove Players ------------------------------------------------------------ //
 // Dropdown for all investigators
@@ -319,6 +350,9 @@ function createAppendableButtonObject(text, parentObject, func, classList) {
 function closeModal(modal) {
   modal.close();
 }
+function showModal(modal) {
+  modal.showModal();
+}
 function createAppendableDropdownObject(name, optionsArray, parentObject) {
   const dropdown = document.createElement("select");
   dropdown.name = name;
@@ -347,6 +381,13 @@ function createAppendableDateObject(id, dateText, name, parentObject) {
 
   parentObject.append(label);
   parentObject.append(input);
+}
+function createFormObject(id) {
+  // Form
+  const form = document.createElement("form");
+  form.id = id;
+
+  return form;
 }
 const emptyEAVObject = {
   name: "",
@@ -717,4 +758,4 @@ const challengeScenarios = [
 ];
 
 // ------------------------------------------------------------ Exports ------------------------------------------------------------ //
-export { displayArkhamHorror };
+export { displayArkhamHorrorCampaigns };

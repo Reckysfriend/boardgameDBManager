@@ -1,17 +1,11 @@
-import { displayArkhamHorror } from "./Games/Arkhamhorrorlcg";
+import { displayArkhamHorrorCampaigns } from "./Games/Arkhamhorrorlcg";
 
-const allGame = [
-  "Arkham Horror: LCG",
-  "Lord of the Rings: LCG",
-  "Lost Ruins of Arnak",
-  "Final Girl",
-  "Mage Knight",
-];
+const allGame = ["Arkham Horror: LCG", "Lord of the Rings: LCG", "Lost Ruins of Arnak", "Final Girl", "Mage Knight"];
 
 const allGames = [
   {
     Name: "Arkham Horror: LCG",
-    Func: displayArkhamHorror,
+    Func: displayArkhamHorrorCampaigns,
     BG: "bg-green-200",
   },
 ];
@@ -38,4 +32,4 @@ function createGameDisplay() {
 
 //createGameDisplay();
 
-displayArkhamHorror();
+displayArkhamHorrorCampaigns();

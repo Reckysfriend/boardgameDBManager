@@ -12,7 +12,15 @@ app.use(cors());
 app.listen(port, () => {
   console.log(`Example app listening on port ${port}`);
 });
-
+// ------------------------------------------------------------ High Level Tables ------------------------------------------------------------ //
+app.get("/players", async (req, res, next) => {
+  try {
+    const players = await sql`select * from player`;
+    res.send(players);
+  } catch (err) {
+    next(err);
+  }
+});
 // ------------------------------------------------------------ Arkham Horror LCG ------------------------------------------------------------ //
 app.get("/arkhamlcg/campaigns", async (req, res, next) => {
   try {
