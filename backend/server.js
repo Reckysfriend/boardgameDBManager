@@ -13,10 +13,7 @@ app.listen(port, () => {
   console.log(`Example app listening on port ${port}`);
 });
 
-app.get("/test", (req, res) => {
-  res.send("Hello World!");
-});
-
+// ------------------------------------------------------------ Arkham Horror LCG ------------------------------------------------------------ //
 app.get("/arkhamlcg/campaigns", async (req, res, next) => {
   try {
     const campaigns = await sql`select * from arkham_horror_lcg_campaigns`;
@@ -41,8 +38,7 @@ app.post("/arkhamlcg/campaigns", async (req, res) => {
 
 app.get("/arkhamlcg/scenarios", async (req, res, next) => {
   try {
-    const scenarios =
-      await sql`select * from arkham_horror_lcg_scenarios order by scenario_order asc`;
+    const scenarios = await sql`select * from arkham_horror_lcg_scenarios order by scenario_order asc`;
     res.send(scenarios);
   } catch (err) {
     next(err);
@@ -51,8 +47,7 @@ app.get("/arkhamlcg/scenarios", async (req, res, next) => {
 
 app.get("/arkhamlcg/scenarios/:campaignID", async (req, res, next) => {
   try {
-    const scenarios =
-      await sql`select * from arkham_horror_lcg_scenarios where campaign_id = ${req.params.campaignID}`;
+    const scenarios = await sql`select * from arkham_horror_lcg_scenarios where campaign_id = ${req.params.campaignID}`;
 
     res.send(scenarios);
   } catch (err) {
