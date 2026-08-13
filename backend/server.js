@@ -45,13 +45,28 @@ app.post("/arkhamlcg/campaigns", async (req, res) => {
   const campaign =
     await sql`insert into arkham_horror_lcg_campaigns ${sql(post_values, "name", "start_date", "end_date", "status", "is_legacy_status")} returning id`;
 
-  res.sendStatus(200);
+  res.send(campaign[0].id);
 });
 
 app.delete("/arkhamlcg/campaigns/:id", async (req, res, next) => {
   try {
     await sql`delete from arkham_horror_lcg_campaigns where id = ${req.params.id}`;
-    res.send();
+    res.sendStatus(200);
+  } catch (err) {
+    next(err);
+  }
+});
+
+app.post("/arkhamlcg/players", async (req, res, next) => {
+  try {
+    const array = req.body;
+    for (const player of array) {
+      const post_values = { player_id: player.player_name, campaign_id: player.campaign_id, investigator_name: player.investigator, deck_link: null };
+      console.log("Post Values:", post_values);
+      const campaign_player =
+        await sql`insert into arkham_horror_lcg_campaigns_players ${sql(post_values, "player_id", "campaign_id", "investigator_name", "deck_link")}`;
+    }
+    res.sendStatus(200);
   } catch (err) {
     next(err);
   }
