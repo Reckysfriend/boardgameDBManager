@@ -33,15 +33,28 @@ app.get("/arkhamlcg/campaigns", async (req, res, next) => {
 
 app.post("/arkhamlcg/campaigns", async (req, res) => {
   const post_values = {
-    name: req.body.name,
+    name: req.body.campaign,
     start_date: req.body.start_date,
     end_date: req.body.end_date,
-    status: req.body.status,
+    status: req.body.playing_status,
     is_legacy_status: req.body.is_legacy_status,
   };
-  await sql`insert into arkham_horror_lcg_campaigns ${sql(post_values, "name", "start_date", "end_date", "status", "is_legacy_status")}`;
+  if (post_values["end_date"] == "") {
+    post_values["end_date"] = null;
+  }
+  const campaign =
+    await sql`insert into arkham_horror_lcg_campaigns ${sql(post_values, "name", "start_date", "end_date", "status", "is_legacy_status")} returning id`;
 
-  res.send(`${req.body.name} has been added to the DB!`);
+  res.sendStatus(200);
+});
+
+app.delete("/arkhamlcg/campaigns/:id", async (req, res, next) => {
+  try {
+    await sql`delete from arkham_horror_lcg_campaigns where id = ${req.params.id}`;
+    res.send();
+  } catch (err) {
+    next(err);
+  }
 });
 
 app.get("/arkhamlcg/scenarios", async (req, res, next) => {
@@ -71,7 +84,6 @@ app.post("/arkhamlcg/scenarios", async (req, res) => {
     resolution: req.body.resolution,
     play_location: req.body.play_location,
   };
-  console.log(post_values);
   await sql`insert into scenarios ${sql(post_values, "campaign_id", "name", "scenario_order", "resolution", "play_location")}`;
 
   res.send(`${req.body.name} has been added to the DB!`);

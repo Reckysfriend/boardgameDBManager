@@ -1,1 +1,2 @@
 #1 When loadning the dropdown to add a new secenario the text for otpgroup does not show but the area is still taken up for dividning. 
+#2 Form does not reset and values bug out even if visual matches if you do not reload the page between posts
