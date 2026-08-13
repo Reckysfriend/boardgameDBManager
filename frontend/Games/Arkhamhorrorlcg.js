@@ -80,7 +80,6 @@ async function displayArkhamHorrorCampaigns() {
           "Content-Type": "application/json",
         },
       });
-      console.log("Post Delete");
       await updateDisplay();
     });
     removeButton.classList = "bg-red-500 hover:bg-red-700 content-center";
@@ -207,7 +206,7 @@ async function AddCampaign() {
     const playerData = new FormData(playerForm);
     const playerObject = Object.fromEntries(playerData);
 
-    console.log(campaignObject);
+    console.log(playerObject);
     const url = "http://localhost:3000/arkhamlcg/campaigns";
 
     const response = await fetch(url, {
@@ -217,10 +216,33 @@ async function AddCampaign() {
         "Content-Type": "application/json",
       },
     });
+    const campaignid = await response.text();
+    addCampaignPlayerToDB(campaignid, playerObject);
     updateDisplay();
   } else {
     invalidFormMessage();
   }
+}
+async function addCampaignPlayerToDB(campaignID, playerObject) {
+  const url = "http://localhost:3000/arkhamlcg/players";
+  let dbObject = [];
+
+  for (let i = 1; i < 5; i++) {
+    if (playerObject["investigator_" + i] !== "" && playerObject["player_" + i] !== "") {
+      const playerInvest = { player_name: playerObject["player_" + i], campaign_id: campaignID, investigator: playerObject["investigator_" + i] };
+      dbObject.push(playerInvest);
+    }
+  }
+
+  console.log("After ", dbObject);
+
+  const response = await fetch(url, {
+    method: "POST",
+    body: JSON.stringify(dbObject),
+    headers: {
+      "Content-Type": "application/json",
+    },
+  });
 }
 function createAddCampaignModal() {
   //Create modal for adding campaigns
@@ -394,7 +416,6 @@ async function BuildAddScenarioVictoryDisplayScreen(scenario, campaign) {
 // ------------------------------------------------------------ Utility Functions ------------------------------------------------------------ //
 async function updateDisplay() {
   allCampaigns = await LoadAllCampaigns();
-  console.log(allCampaigns);
   newContainer.replaceChildren();
   displayArkhamHorrorCampaigns();
 }
