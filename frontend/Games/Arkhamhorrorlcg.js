@@ -2,9 +2,12 @@
 // Holds the current campaign ID for navigation
 let currentSelectedCampaignID = null;
 // Fetches all Arkham Horror Campaigns from my backend
-const allCampaigns = await LoadAllCampaigns();
+let allCampaigns = await LoadAllCampaigns();
 // Fetches all listed players in DB
 const allPlayers = await FetchAllPlayers();
+console.log(allPlayers);
+// Default for dropdown to check against to make sure there are valid values
+const dropdownDefault = { Name: "-", Value: "" };
 // Creates a container that holds all the new elements we need.
 const newContainer = document.createElement("div");
 newContainer.classList = "flex-1 h-screen";
@@ -12,14 +15,12 @@ async function LoadAllCampaigns() {
   const url = "http://localhost:3000/arkhamlcg/campaigns";
   const response = await fetch(url);
   const result = await response.json();
-  console.log(result);
   return result;
 }
 async function FetchAllPlayers() {
   const url = "http://localhost:3000/players";
   const response = await fetch(url);
   const result = await response.json();
-  console.log(result);
   return result;
 }
 // Gets a reference to the body element to be able to place our other elements
@@ -47,7 +48,7 @@ async function displayArkhamHorrorCampaigns() {
   bodyElement.append(modal);
   // Create button for adding campaign
   const addButtonClassList = "bg-green-200 hover:bg-green-300";
-  createAppendableButtonObject("+", searchbarDiv, () => showModal(modal), addButtonClassList);
+  createAppendableButtonObject("+", "", searchbarDiv, () => showModal(modal), addButtonClassList);
 
   // Appends objects to div
   searchbarDiv.append(searchbarText);
@@ -59,17 +60,29 @@ async function displayArkhamHorrorCampaigns() {
     const liElement = document.createElement("li");
     liElement.classList = "grid grid-cols-5 grid-rows-2 odd:bg-gray-300 even:bg-gray-200 hover:bg-green-100";
 
-    liElement.addEventListener("click", () => {
+    const titleDiv = document.createElement("div");
+
+    const liTitle = document.createElement("h1");
+    liTitle.addEventListener("click", () => {
       DisplaySelectedCampaignByID(campaign.id, campaign.name);
     });
-    const titleDiv = document.createElement("div");
-    const liTitle = document.createElement("h1");
     const liTitleText = document.createTextNode(`${campaign.name}`);
     liTitle.classList = "row-span-full content-center";
     liTitle.append(liTitleText);
 
     const removeButton = document.createElement("div");
     const removeText = document.createTextNode("-");
+    removeButton.addEventListener("click", async () => {
+      const url = `http://localhost:3000/arkhamlcg/campaigns/${campaign.id}`;
+      const response = await fetch(url, {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+      console.log("Post Delete");
+      await updateDisplay();
+    });
     removeButton.classList = "bg-red-500 hover:bg-red-700 content-center";
     removeButton.append(removeText);
 
@@ -92,7 +105,7 @@ async function DisplaySelectedCampaignByID(id, name) {
   // Fetches all scenarios by the given ID
   const selectedCampaign = await LoadSelectedCampaignByID(id);
   // Clears the screen
-  clearScreen();
+  updateDisplay();
   // Create the Title object and allow it 20% of the screen
   const title = document.createElement("h1");
   const titelText = document.createTextNode(`${name}`);
@@ -184,23 +197,30 @@ async function DisplaySelectedCampaignByID(id, name) {
 }
 // ------------------------------------------------------------ Add & Remove Campaigns ------------------------------------------------------------ //
 async function AddCampaign() {
-  const form = document.getElementById("addcampaignform");
-  const formData = new FormData(form);
-  const FormDataObject = Object.fromEntries(formData);
+  const validCheck = formValidilityCheck();
+  if (validCheck) {
+    const campaignForm = document.getElementById("addcampaignform");
+    const campaignData = new FormData(campaignForm);
+    const campaignObject = Object.fromEntries(campaignData);
 
-  const url = "http://localhost:3000/arkhamlcg/campaigns";
+    const playerForm = document.getElementById("addplayerform");
+    const playerData = new FormData(playerForm);
+    const playerObject = Object.fromEntries(playerData);
 
-  const response = await fetch(url, {
-    method: "POST",
-    body: JSON.stringify(FormDataObject),
-    headers: {
-      "Content-Type": "application/json",
-    },
-  });
-  const res_message = await response.text();
-  console.log(res_message);
-  newContainer.innerHTML = "";
-  displayArkhamHorrorCampaigns();
+    console.log(campaignObject);
+    const url = "http://localhost:3000/arkhamlcg/campaigns";
+
+    const response = await fetch(url, {
+      method: "POST",
+      body: JSON.stringify(campaignObject),
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+    updateDisplay();
+  } else {
+    invalidFormMessage();
+  }
 }
 function createAddCampaignModal() {
   //Create modal for adding campaigns
@@ -237,40 +257,97 @@ function createCampaignDiv(modal, campaignDiv, playerDiv) {
     const campaignObject = { Name: campaign, Value: campaign };
     allCampaingsCovertedArray.push(campaignObject);
   });
-  createAppendableDropdownObject("Campaign:", allCampaingsCovertedArray, form);
+  const campaignDropdown = createAppendableDropdownObject("campaign", allCampaingsCovertedArray);
+  form.append(campaignDropdown);
   // Start & End Date
   createAppendableDateObject("start_date", "Start Date:", "start_date", form);
   createAppendableDateObject("end_date", "End Date:", "end_date", form);
   // Playing Status
   const campaignPlayingStatusArray = [
-    { Name: "Playing", Value: "Playing" },
-    { Name: "Finished", Value: "Finished" },
-    { Name: "Abandoned", Value: "Abandoned" },
+    { Name: "Playing", Value: "playing" },
+    { Name: "Finished", Value: "finished" },
+    { Name: "Abandoned", Value: "abandoned" },
   ];
-  createAppendableDropdownObject("playing_status", campaignPlayingStatusArray, form);
+  const playingStatusDropdown = createAppendableDropdownObject("playing_status", campaignPlayingStatusArray);
+  form.append(playingStatusDropdown);
   // Legacy Status
   const campaignStatusArray = [
-    { Name: "True", Value: "True" },
-    { Name: "False", Value: "False" },
+    { Name: "False", Value: false },
+    { Name: "True", Value: true },
   ];
-  createAppendableDropdownObject("is_legacy_status", campaignStatusArray, form);
+  const isLegacyStatusDropdown = createAppendableDropdownObject("is_legacy_status", campaignStatusArray);
+  form.append(isLegacyStatusDropdown);
   // Append form to modal
   campaignDiv.append(form);
   // Close button elements
-  createAppendableButtonObject("Close", campaignDiv, () => closeModal(modal), "");
+  createAppendableButtonObject("Close", "", campaignDiv, () => closeModal(modal), "");
   // Next page button for form
-  createAppendableButtonObject("->", campaignDiv, () => swapModal(campaignDiv, playerDiv), "");
+  createAppendableButtonObject("->", "", campaignDiv, () => swapModal(campaignDiv, playerDiv), "");
 }
 function createPlayerDiv(modal, campaignDiv, playerDiv) {
   const addPlayerForm = createFormObject("addplayerform");
-  createAppendableDropdownObject("Investigators: ", arkhamInvestigators, addPlayerForm);
-  createAppendableDropdownObject("Players: ", allPlayers, addPlayerForm);
-  playerDiv.append(addPlayerForm);
+  for (let i = 0; i < 4; i++) {
+    const newDiv = document.createElement("div");
+    newDiv.classList = "flex-box";
+    // Take the investigator Array and reformat it for function
+    const allInvestigatorsCoverted = [];
+    allInvestigatorsCoverted.push(dropdownDefault);
+    arkhamInvestigators.forEach((investigator) => {
+      const invest = { Name: investigator, Value: investigator };
+      allInvestigatorsCoverted.push(invest);
+    });
+    // Take the player Array and reformat it for function
+    const allPlayersCoverted = [];
+    allPlayersCoverted.push(dropdownDefault);
+    allPlayers.forEach((player) => {
+      const players = { Name: player.name, Value: player.id };
+      allPlayersCoverted.push(players);
+    });
 
+    const investigatorDropdown = createAppendableDropdownObject(`investigator_${i + 1}`, allInvestigatorsCoverted);
+    newDiv.append(investigatorDropdown);
+    const allPlayerDropdown = createAppendableDropdownObject(`player_${i + 1}`, allPlayersCoverted);
+    newDiv.append(allPlayerDropdown);
+    addPlayerForm.append(newDiv);
+
+    const allSelectElements = addPlayerForm.querySelectorAll("select");
+    allSelectElements.forEach((element) => {
+      element.addEventListener("change", updateFormIfValid);
+    });
+  }
+  playerDiv.append(addPlayerForm);
   // Next page button for form
-  createAppendableButtonObject("<-", playerDiv, () => swapModal(campaignDiv, playerDiv), "");
+  createAppendableButtonObject("<-", "", playerDiv, () => swapModal(campaignDiv, playerDiv), "");
   // Close button elements
-  createAppendableButtonObject("Close", playerDiv, () => closeModal(modal), "");
+  createAppendableButtonObject("Close", "", playerDiv, () => closeModal(modal), "");
+  // Submit button elements
+  createAppendableButtonObject("Submit", "submitbutton", playerDiv, AddCampaign, "text-red-500");
+}
+function invalidFormMessage() {
+  console.log("You have not filled in every value");
+}
+function updateFormIfValid() {
+  const submitButton = document.getElementById("submitbutton");
+  const classList = submitButton.classList;
+  const validCheck = formValidilityCheck();
+  console.log(`Valid Check: ${validCheck}`);
+  if (validCheck) {
+    classList.remove("text-red-500");
+    classList.add("text-green-500");
+  } else {
+    classList.add("text-red-500");
+    classList.remove("text-green-500");
+  }
+}
+function formValidilityCheck() {
+  const form = document.getElementById("addplayerform");
+  const formData = new FormData(form);
+
+  if (formData.get("investigator_1") !== "" && formData.get("player_1") !== "") {
+    return true;
+  } else {
+    return false;
+  }
 }
 // ------------------------------------------------------------ Add & Remove Players ------------------------------------------------------------ //
 // Dropdown for all investigators
@@ -291,9 +368,8 @@ async function AddScenario(scenario, campaign) {
   BuildAddScenarioVictoryDisplayScreen(scenario, campaign);
 }
 async function BuildAddScenarioVictoryDisplayScreen(scenario, campaign) {
-  console.log(`${campaign}: ${scenario}`);
   const victoryDisplay = allScenarioResolutions[campaign][scenario].victoryDisplay;
-  clearScreen();
+  updateDisplay();
   const victoryDisplayArea = document.createElement("div");
   victoryDisplayArea.classList = "flex h-1/3 overflow-x-auto gap-2";
   victoryDisplay.forEach((victory) => {
@@ -302,9 +378,7 @@ async function BuildAddScenarioVictoryDisplayScreen(scenario, campaign) {
     img.addEventListener("click", () => {
       const classes = img.classList;
       classes.toggle("grayscale");
-      console.log(`Start of EAV: ${victory.id}`);
       const victoryDisplayID = entityAttributeValueObject.find((entity) => entity.UUID == victory.UUID);
-      console.log(victoryDisplayID);
       if (victoryDisplayID == undefined) {
         entityAttributeValueObject.push(victory);
       } else {
@@ -318,8 +392,11 @@ async function BuildAddScenarioVictoryDisplayScreen(scenario, campaign) {
   const test = document.Elementby;
 }
 // ------------------------------------------------------------ Utility Functions ------------------------------------------------------------ //
-function clearScreen() {
+async function updateDisplay() {
+  allCampaigns = await LoadAllCampaigns();
+  console.log(allCampaigns);
   newContainer.replaceChildren();
+  displayArkhamHorrorCampaigns();
 }
 function addDropdownWithOptGroups(array, selectElement, optName) {
   const optgroup = document.createElement("optgroup");
@@ -338,10 +415,11 @@ function addDropdownWithOptGroups(array, selectElement, optName) {
   });
   selectElement.append(optgroup);
 }
-function createAppendableButtonObject(text, parentObject, func, classList) {
+function createAppendableButtonObject(text, id, parentObject, func, classList) {
   const button = document.createElement("button");
   button.append(document.createTextNode(text));
   button.classList = classList;
+  button.id = id;
   button.addEventListener("click", () => {
     func();
   });
@@ -353,7 +431,7 @@ function closeModal(modal) {
 function showModal(modal) {
   modal.showModal();
 }
-function createAppendableDropdownObject(name, optionsArray, parentObject) {
+function createAppendableDropdownObject(name, optionsArray) {
   const dropdown = document.createElement("select");
   dropdown.name = name;
   optionsArray.forEach((option) => {
@@ -363,7 +441,7 @@ function createAppendableDropdownObject(name, optionsArray, parentObject) {
 
     dropdown.append(newOption);
   });
-  parentObject.append(dropdown);
+  return dropdown;
 }
 function createAppendableDateObject(id, dateText, name, parentObject) {
   // Creates a default value which is always todays date
@@ -376,6 +454,9 @@ function createAppendableDateObject(id, dateText, name, parentObject) {
   label.append(document.createTextNode(dateText));
   const input = document.createElement("input");
   input.name = name;
+  if (id == "start_date") {
+    input.value = todayDate;
+  }
   input.type = "date";
   input.id = id;
 
