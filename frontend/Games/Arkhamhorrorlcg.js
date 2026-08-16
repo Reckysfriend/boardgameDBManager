@@ -104,7 +104,7 @@ async function DisplaySelectedCampaignByID(id, name) {
   // Fetches all scenarios by the given ID
   const selectedCampaign = await LoadSelectedCampaignByID(id);
   // Clears the screen
-  updateDisplay();
+  clearScreen();
   // Create the Title object and allow it 20% of the screen
   const title = document.createElement("h1");
   const titelText = document.createTextNode(`${name}`);
@@ -391,7 +391,7 @@ async function AddScenario(scenario, campaign) {
 }
 async function BuildAddScenarioVictoryDisplayScreen(scenario, campaign) {
   const victoryDisplay = allScenarioResolutions[campaign][scenario].victoryDisplay;
-  updateDisplay();
+  clearScreen();
   const victoryDisplayArea = document.createElement("div");
   victoryDisplayArea.classList = "flex h-1/3 overflow-x-auto gap-2";
   victoryDisplay.forEach((victory) => {
@@ -418,6 +418,9 @@ async function updateDisplay() {
   allCampaigns = await LoadAllCampaigns();
   newContainer.replaceChildren();
   displayArkhamHorrorCampaigns();
+}
+function clearScreen() {
+  newContainer.replaceChildren();
 }
 function addDropdownWithOptGroups(array, selectElement, optName) {
   const optgroup = document.createElement("optgroup");
