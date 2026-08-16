@@ -100,8 +100,21 @@ async function LoadSelectedCampaignByID(id) {
   const result = await response.json();
   return selectedCampaign;
 }
+async function LoadPlayersByCampaignId(id){
+const url = `http://localhost:3000/arkhamlcg/players/${id}`
+
+ const response = await fetch(url, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+    const players = await response.text()
+  console.log(players)
+}
 async function DisplaySelectedCampaignByID(id, name) {
   // Fetches all scenarios by the given ID
+  const allPlayersInCampaign = await LoadPlayersByCampaignId(id)
   const selectedCampaign = await LoadSelectedCampaignByID(id);
   // Clears the screen
   clearScreen();
@@ -122,16 +135,19 @@ async function DisplaySelectedCampaignByID(id, name) {
   const playerAreaGrid = document.createElement("div");
   playerArea.append(playerAreaGrid);
   playerAreaGrid.classList = "grid grid-cols-2 grid-rows-2 gap-2 h-full";
-  for (let i = 0; i < 4; i++) {
+  for (const player of allPlayersInCampaign) {
+    console.log(player)
     const playerElement = document.createElement("div");
     playerElement.classList = "bg-gray-200 m-2";
     playerElement.id = `player${i + 1}`;
     const playerH1 = document.createElement("h1");
-    const playerH1Text = document.createTextNode(`Player ${i + 1}`);
+    const playerH1Text = document.createTextNode(`${player.id}: ${player.investigator}`);
     playerH1.append(playerH1Text);
     playerElement.append(playerH1);
     playerAreaGrid.append(playerElement);
-  }
+  }; 
+
+
   // Scenario Area
   const scenarioArea = document.createElement("div");
   scenarioArea.classList = "bg-blue-200 col-span-6";

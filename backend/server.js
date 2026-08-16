@@ -22,6 +22,15 @@ app.get("/players", async (req, res, next) => {
   }
 });
 // ------------------------------------------------------------ Arkham Horror LCG ------------------------------------------------------------ //
+app.get("/arkhamlcg/players/:campaignID", async (req,res,next) => {
+  try {
+    const players = await sql`select player_id,investigator_name from arkham_horror_lcg_campaigns_players where campaign_id=${req.params.campaignID}`;
+      res.send(players)
+    }
+   catch (err) {
+    next(err)
+  }})
+
 app.get("/arkhamlcg/campaigns", async (req, res, next) => {
   try {
     const campaigns = await sql`select * from arkham_horror_lcg_campaigns`;
