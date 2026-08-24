@@ -30,7 +30,14 @@ app.get("/arkhamlcg/campaigns", async (req, res, next) => {
     next(err);
   }
 });
-
+app.get("/arkhamlcg/campaigns/players/:id", async (req, res, next) => {
+  try {
+    const players = await sql`select player_id,investigator_name from arkham_horror_lcg_campaigns_players where campaign_id = ${req.params.id}`;
+    res.send(players);
+  } catch (err) {
+    next(err);
+  }
+});
 app.post("/arkhamlcg/campaigns", async (req, res) => {
   const post_values = {
     name: req.body.campaign,

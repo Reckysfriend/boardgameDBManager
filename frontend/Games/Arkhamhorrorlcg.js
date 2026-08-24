@@ -4,8 +4,10 @@ let currentSelectedCampaignID = null;
 // Fetches all Arkham Horror Campaigns from my backend
 let allCampaigns = await LoadAllCampaigns();
 // Fetches all listed players in DB
-const allPlayers = await FetchAllPlayers();
-console.log(allPlayers);
+const allPlayersDict = await FetchAllPlayers();
+const allPlayersArray = Object.entries(allPlayersDict).map(([id, name]) => ({ id, name }));
+console.log(allPlayersDict);
+console.log(allPlayersArray);
 // Default for dropdown to check against to make sure there are valid values
 const dropdownDefault = { Name: "-", Value: "" };
 // Creates a container that holds all the new elements we need.
@@ -20,7 +22,10 @@ async function LoadAllCampaigns() {
 async function FetchAllPlayers() {
   const url = "http://localhost:3000/players";
   const response = await fetch(url);
-  const result = await response.json();
+  const responseJson = await response.json();
+  // AI Solution
+  const result = Object.fromEntries(responseJson.map((player) => [player.id, player.name]));
+  //
   return result;
 }
 // Gets a reference to the body element to be able to place our other elements
@@ -101,6 +106,8 @@ async function LoadSelectedCampaignByID(id) {
   return selectedCampaign;
 }
 async function DisplaySelectedCampaignByID(id, name) {
+  // Fetches all active players for scenario
+  FetchActivePlayers(id);
   // Fetches all scenarios by the given ID
   const selectedCampaign = await LoadSelectedCampaignByID(id);
   // Clears the screen
@@ -193,6 +200,16 @@ async function DisplaySelectedCampaignByID(id, name) {
   scenarioArea.append(addScenarioDialog);
   //Appends all to container
   newContainer.append(gridDiv);
+}
+async function FetchActivePlayers(id) {
+  const url = `http://localhost:3000/arkhamlcg/campaigns/players/${id}`;
+  const response = await fetch(url, {
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json",
+    },
+  });
+  const players = response.json();
 }
 // ------------------------------------------------------------ Add & Remove Campaigns ------------------------------------------------------------ //
 async function AddCampaign() {
@@ -321,7 +338,7 @@ function createPlayerDiv(modal, campaignDiv, playerDiv) {
     // Take the player Array and reformat it for function
     const allPlayersCoverted = [];
     allPlayersCoverted.push(dropdownDefault);
-    allPlayers.forEach((player) => {
+    allPlayersArray.forEach((player) => {
       const players = { Name: player.name, Value: player.id };
       allPlayersCoverted.push(players);
     });
