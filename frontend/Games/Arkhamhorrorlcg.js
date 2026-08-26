@@ -1,18 +1,21 @@
 // ------------------------------------------------------------ Global Variabls ------------------------------------------------------------ //
+// Gets a reference to the body element to be able to place our other elements
+const bodyElement = document.body;
 // Holds the current campaign ID for navigation
 let currentSelectedCampaignID = null;
+// Holds the current active players of selected campaign
+let activePlayers = [];
 // Fetches all Arkham Horror Campaigns from my backend
 let allCampaigns = await LoadAllCampaigns();
 // Fetches all listed players in DB
 const allPlayersDict = await FetchAllPlayers();
 const allPlayersArray = Object.entries(allPlayersDict).map(([id, name]) => ({ id, name }));
-console.log(allPlayersDict);
-console.log(allPlayersArray);
 // Default for dropdown to check against to make sure there are valid values
 const dropdownDefault = { Name: "-", Value: "" };
 // Creates a container that holds all the new elements we need.
 const newContainer = document.createElement("div");
 newContainer.classList = "flex-1 h-screen";
+bodyElement.append(newContainer);
 async function LoadAllCampaigns() {
   const url = "http://localhost:3000/arkhamlcg/campaigns";
   const response = await fetch(url);
@@ -28,8 +31,6 @@ async function FetchAllPlayers() {
   //
   return result;
 }
-// Gets a reference to the body element to be able to place our other elements
-const bodyElement = document.body;
 
 // ------------------------------------------------------------ Display All Campaigns ------------------------------------------------------------ //
 async function displayArkhamHorrorCampaigns() {
@@ -107,11 +108,11 @@ async function LoadSelectedCampaignByID(id) {
 }
 async function DisplaySelectedCampaignByID(id, name) {
   // Fetches all active players for scenario
-  FetchActivePlayers(id);
+  activePlayers = await FetchActivePlayers(id);
   // Fetches all scenarios by the given ID
   const selectedCampaign = await LoadSelectedCampaignByID(id);
   // Clears the screen
-  clearScreen();
+  clearScreen(newContainer);
   // Create the Title object and allow it 20% of the screen
   const title = document.createElement("h1");
   const titelText = document.createTextNode(`${name}`);
@@ -119,25 +120,20 @@ async function DisplaySelectedCampaignByID(id, name) {
   title.appendChild(titelText);
   newContainer.append(title);
   // Grid for area below title
-  const gridDiv = document.createElement("div");
-  gridDiv.classList = "grid grid-cols-8 h-4/5";
+  const gridDiv = await createAppendableDivObject("grid", "grid grid-cols-8 h-4/5", bodyElement);
   // Player Area
-  const playerArea = document.createElement("div");
-  playerArea.classList = "bg-green-200 col-span-2";
-  gridDiv.append(playerArea);
+  const playerArea = await createAppendableDivObject("playerArea", "bg-green-200 col-span-2", gridDiv);
 
-  const playerAreaGrid = document.createElement("div");
-  playerArea.append(playerAreaGrid);
-  playerAreaGrid.classList = "grid grid-cols-2 grid-rows-2 gap-2 h-full";
-  for (let i = 0; i < 4; i++) {
-    const playerElement = document.createElement("div");
-    playerElement.classList = "bg-gray-200 m-2";
-    playerElement.id = `player${i + 1}`;
+  const playerAreaGrid = await createAppendableDivObject("playerAreaGrid", "grid grid-cols-2 grid-rows-2 gap-2 h-full", playerArea);
+  for (let i = 0; i < activePlayers.length; i++) {
+    const playerElement = createAppendableDivObject(`${i + 1}`, "bg-gray-200 m-2", playerAreaGrid);
     const playerH1 = document.createElement("h1");
-    const playerH1Text = document.createTextNode(`Player ${i + 1}`);
-    playerH1.append(playerH1Text);
+    playerH1.append(document.createTextNode(activePlayers[i].playerName));
     playerElement.append(playerH1);
-    playerAreaGrid.append(playerElement);
+
+    const playerPElement = document.createElement("p");
+    playerPElement.append(document.createTextNode(activePlayers[i].investigatorName));
+    playerElement.append(playerPElement);
   }
   // Scenario Area
   const scenarioArea = document.createElement("div");
@@ -185,7 +181,7 @@ async function DisplaySelectedCampaignByID(id, name) {
   confirmButton.classList = "bg-green-200 hover:bg-green-300 text-center";
   confirmButton.append(document.createTextNode("Confirm"));
   confirmButton.addEventListener("click", () => {
-    AddScenario(scenarioAddDropdown.value, name);
+    AddScenario(scenarioAddDropdown.value, name, activePlayers);
   });
   addScenarioDialog.append(confirmButton);
   // Close Button
@@ -209,7 +205,15 @@ async function FetchActivePlayers(id) {
       "Content-Type": "application/json",
     },
   });
-  const players = response.json();
+  const players = await response.json();
+
+  // Coverts from numerical ID to name for use in object creation
+  let activePlayers = [];
+  players.forEach((p) => {
+    const player = { playerName: allPlayersDict[p.player_id], investigatorName: p.investigator_name };
+    activePlayers.push(player);
+  });
+  return activePlayers;
 }
 // ------------------------------------------------------------ Add & Remove Campaigns ------------------------------------------------------------ //
 async function AddCampaign() {
@@ -388,6 +392,14 @@ function formValidilityCheck() {
     return false;
   }
 }
+function createAppendableDivObject(id, classList, parentObject) {
+  const div = document.createElement("div");
+  div.classList = classList;
+  div.id = id;
+  parentObject.append(div);
+
+  return div;
+}
 // ------------------------------------------------------------ Add & Remove Players ------------------------------------------------------------ //
 // Dropdown for all investigators
 // Dropdown for all players
@@ -396,7 +408,7 @@ function formValidilityCheck() {
 // ------------------------------------------------------------ Add & Remove Scenario ------------------------------------------------------------ //
 function AddScenarioToCampaign() {}
 let entityAttributeValueObject = [];
-async function AddScenario(scenario, campaign) {
+async function AddScenario(scenario, campaign, activePlayers) {
   // Pop up that shows all that campaigns scenarios, each standalone, each challange scenario.
   // When you click on one it takes you to a form based on that scenario.
   // -- Info needed --
@@ -404,11 +416,16 @@ async function AddScenario(scenario, campaign) {
   // Invest info
   // Victory Display
   // Campaign Log choices
+  clearScreen(newContainer);
+
+  BuildAddScenarioTitleArea(scenario, campaign);
   BuildAddScenarioVictoryDisplayScreen(scenario, campaign);
+  BuildAddScenarioCampaignLogArea();
+  buildAddScenarioOwnershipArea();
+  buildAddScenarioPlayerArea();
 }
 async function BuildAddScenarioVictoryDisplayScreen(scenario, campaign) {
   const victoryDisplay = allScenarioResolutions[campaign][scenario].victoryDisplay;
-  clearScreen();
   const victoryDisplayArea = document.createElement("div");
   victoryDisplayArea.classList = "flex h-1/3 overflow-x-auto gap-2";
   victoryDisplay.forEach((victory) => {
@@ -423,21 +440,175 @@ async function BuildAddScenarioVictoryDisplayScreen(scenario, campaign) {
       } else {
         entityAttributeValueObject = entityAttributeValueObject.filter((entity) => entity.UUID !== victory.UUID);
       }
+      ScenarioHandler(entityAttributeValueObject);
     });
+
     img.src = `/img/arkham_horror_lcg/Victory Display/${victory.img}`;
     victoryDisplayArea.append(img);
   });
   newContainer.append(victoryDisplayArea);
   const test = document.Elementby;
 }
+function BuildAddScenarioTitleArea(scenario, campaign) {
+  let oldResolution = null;
+  const resolutionNumbers = Object.keys(allScenarioResolutions[campaign][scenario].resolution);
+  const div = createAppendableDivObject("titleAreaScenarioDiv", "flex h-1/5", newContainer);
+  const titleArea = createAppendableDivObject("titleAreaScenario", "bg-red-100 w-1/2", div);
+  const title = document.createElement("h1");
+  title.classList = "text-center";
+  title.appendChild(document.createTextNode(`${scenario}`));
+  titleArea.append(title);
+
+  const resolutionArea = createAppendableDivObject("resolutionAreaScenario", "bg-green-100 w-1/2", div);
+  let resolutionArray = [];
+  resolutionNumbers.forEach((res) => {
+    if (res === "0") {
+      const res0 = { Name: "No resolution was reached", Value: res };
+      resolutionArray.push(res0);
+    } else {
+      const resolution = { Name: `Resolution ${res}`, Value: res };
+      resolutionArray.push(resolution);
+    }
+  });
+  const resolutionDropdown = createAppendableDropdownObject("scenarioResolution", resolutionArray);
+  resolutionArea.append(resolutionDropdown);
+
+  const allSelectElements = document.getElementsByName(resolutionDropdown.name);
+  allSelectElements.forEach((element) => {
+    element.addEventListener("change", (event) => {
+      const currentResolution = allScenarioResolutions[campaign][scenario].resolution[event.target.value];
+
+      // Removes any EAV entires from the old resolution
+      if (oldResolution !== null) {
+        oldResolution.forEach((res) => {
+          const uniqueID = entityAttributeValueObject.find((entity) => entity.UUID == res.UUID);
+          if (uniqueID !== undefined) {
+            entityAttributeValueObject = entityAttributeValueObject.filter((entity) => entity.UUID !== res.UUID);
+          }
+        });
+      }
+      // Adds the correct EAV entires for the newly selected resolution
+      currentResolution.forEach((res) => {
+        const uniqueID = entityAttributeValueObject.find((entity) => entity.UUID == res.UUID);
+        if (uniqueID == undefined) {
+          entityAttributeValueObject.push(res);
+        }
+      });
+      oldResolution = currentResolution;
+      ScenarioHandler(entityAttributeValueObject);
+    });
+  });
+}
+function BuildAddScenarioCampaignLogArea() {
+  const div = createAppendableDivObject("campaignLogArea", "w-1/3 h-1/4 bg-blue-200 flex flex-col", newContainer);
+  const title = createAppendableH1Object("campaignLogTitle", "Campaign Log", "text-center", div);
+
+  const campaignLogList = document.createElement("ul");
+  campaignLogList.id = "campaignLogList";
+  div.append(campaignLogList);
+
+  const tokenxpDiv = createAppendableDivObject("campaignLogExtra", "flex mt-auto p-1", div);
+  const xpDiv = createAppendableDivObject("campaignLogExperiance", "bg-yellow-100 w-1/2", tokenxpDiv);
+  createAppendablePElement("campaignLogXp", "XP: ", "text-center", xpDiv);
+  const tokenDiv = createAppendableDivObject("campaignLogChaosToken", "bg-red-100 w-1/2", tokenxpDiv);
+  createAppendablePElement("campaignLogToken", "Chaos Token", "text-center", tokenDiv);
+}
+function buildAddScenarioOwnershipArea() {
+  const div = createAppendableDivObject("ownershipDiv", "bg-green-100 w-1/3", newContainer);
+  const title = createAppendableH1Object("ownershipTitle", "Ownership", "text-center", div);
+
+  createAppendablePElement("ownershipCardName", "", "text-center", div);
+}
+function buildAddScenarioPlayerArea() {
+  const div = createAppendableDivObject("scenarioPlayerArea", "w-1/3 h-1/4 bg-pink-200 flex flex-col", newContainer);
+  const title = createAppendableH1Object("scenarioPlayerAreaTitle", "Player Area", "text-center", div);
+
+  const playerDiv = createAppendableDivObject("players", "", div);
+  let i = 1;
+  activePlayers.forEach((player) => {
+    const groupDiv = createAppendableDivObject(`group${i}Div `, "flex", playerDiv);
+    const players = createAppendablePElement(`player${i}Name `, `${player.playerName}`, "", groupDiv);
+    players.textContent = players.textContent + " -     ";
+    const invests = createAppendablePElement(` player${i}Investigator`, `${player.investigatorName}`, "", groupDiv);
+  });
+}
+function UpdateCampaignLog(eav) {
+  const listElement = document.getElementById("campaignLogList");
+  listElement.replaceChildren();
+  eav.forEach((entity) => {
+    if (entity.entity === "campaign_log") {
+      const liElement = document.createElement("li");
+      const p = document.createElement("p");
+      p.textContent = entity.value;
+      liElement.append(p);
+
+      listElement.append(liElement);
+    }
+  });
+}
+function UpdateExperianceEarnt(eav) {
+  const xpElement = document.getElementById("campaignLogExperiance");
+  let totalXP = 0;
+  eav.forEach((entity) => {
+    if (entity.key === "xp_gained") {
+      totalXP += entity.value;
+    }
+  });
+  xpElement.textContent = `XP: ${totalXP}`;
+}
+function UpdateChaosTokens(eav) {
+  const tokenElement = document.getElementById("campaignLogToken");
+  let tokenText = "";
+  eav.forEach((entity) => {
+    if (entity.entity === "chaos_token") {
+      if (entity.key.includes("added")) {
+        tokenText += `+${entity.value} ${entity.name}`;
+      } else if (entity.key.includes("removed")) {
+        console.log("Token Removed");
+      }
+    }
+  });
+  tokenElement.textContent = tokenText;
+}
+function UpdateOwnership(eav) {
+  const ownershipElement = document.getElementById("ownershipCardName");
+  ownershipElement.replaceChildren();
+  let activeInvestigators = [];
+
+  activePlayers.forEach((player) => {
+    const invest = { Name: player.investigatorName, Value: player.investigatorName };
+    activeInvestigators.push(invest);
+  });
+  eav.forEach((entity) => {
+    if (entity.key === "ownership") {
+      const label = document.createElement("label");
+      label.for = `${entity.name}Ownership`;
+      label.append(document.createTextNode(`${entity.name}:  `));
+
+      const activePlayersDropdown = createAppendableDropdownObject(`${entity.name}Ownership`, activeInvestigators);
+
+      ownershipElement.append(label);
+      ownershipElement.append(activePlayersDropdown);
+    }
+  });
+  console.log(activeInvestigators);
+}
+function ScenarioHandler(eav) {
+  console.log(eav);
+  UpdateCampaignLog(eav);
+  UpdateExperianceEarnt(eav);
+  UpdateChaosTokens(eav);
+  UpdateOwnership(eav);
+}
+
 // ------------------------------------------------------------ Utility Functions ------------------------------------------------------------ //
 async function updateDisplay() {
   allCampaigns = await LoadAllCampaigns();
   newContainer.replaceChildren();
   displayArkhamHorrorCampaigns();
 }
-function clearScreen() {
-  newContainer.replaceChildren();
+function clearScreen(constainer) {
+  constainer.replaceChildren();
 }
 function addDropdownWithOptGroups(array, selectElement, optName) {
   const optgroup = document.createElement("optgroup");
@@ -510,6 +681,24 @@ function createFormObject(id) {
   form.id = id;
 
   return form;
+}
+function createAppendableH1Object(id, text, classList, parentObject) {
+  const title = document.createElement("h1");
+  title.classList = classList;
+  title.id = id;
+  title.appendChild(document.createTextNode(text));
+  parentObject.append(title);
+
+  return title;
+}
+function createAppendablePElement(id, text, classList, parentObject) {
+  const p = document.createElement("p");
+  p.classList = classList;
+  p.id = id;
+  p.textContent = `${text} `;
+  parentObject.append(p);
+
+  return p;
 }
 const emptyEAVObject = {
   name: "",
@@ -590,10 +779,10 @@ function generateStoryAssetOwnership(name, version, trigger, img) {
     img: `${img}.jpg`,
     UUID: self.crypto.randomUUID(),
   };
+  return card;
 }
 // ------------------------------------------------------------ Non-boss Victory Point ------------------------------------------------------------ //
 const victoryDisplayWizardofYogSothoth = generateVictoryPoint("Wizard of Yog-Sothoth", "enemy", null, "default", 1, "02087");
-const victoryDisplayYithianObserver = generateVictoryPoint("Yithian Observer", "enemy", null, "default", 1, "01177");
 // ------------------------------------------------------------ Common Entries ------------------------------------------------------------ //
 const addOneSkullTokenResolution = generateChaosTokenEntry("skull", "resolution", 1);
 const addOneCultistTokenResolution = generateChaosTokenEntry("cultist", "resolution", 1);
@@ -619,12 +808,12 @@ const dunwichLegacyCampaign = [
 // >>>>> Extracurricular Activity <<<<< \\
 
 const extracurricularActivityProfessorWarrenKidnapped = generateCampaignLogEntry("resolution", "1", "Professor Warren Rice was kidnapped");
-const extracurricularActivityFailedStudents = generateCampaignLogEntry("resolution", "2", "the investigators failed to save the students");
+const extracurricularActivityFailedStudents = generateCampaignLogEntry("resolution", "2", "The investigators failed to save the students");
 const dunwichLegacyResolution = {
   "Extracurricular Activity": {
     victoryDisplay: [
-      victoryDisplayYithianObserver,
-      victoryDisplayYithianObserver,
+      generateVictoryPoint("Yithian Observer", "enemy", null, "default", 1, "01177"),
+      generateVictoryPoint("Yithian Observer", "enemy", null, "default", 1, "01177"),
       generateVictoryPoint("Orne Library", "location", null, "default", 1, "02050"),
       generateVictoryPoint("Dormitories", "location", null, "default", 1, "02052"),
       generateVictoryPoint("Faculty Offices", "location", "The Night is Still Young", "choice", 1, "02054"),
@@ -639,15 +828,15 @@ const dunwichLegacyResolution = {
         earnOneBonusExperianceResolution,
       ],
       1: [
-        generateCampaignLogEntry("resolution", 1, "the investigators rescued Professor Warren Rice"),
+        generateCampaignLogEntry("resolution", 1, "The investigators rescued Professor Warren Rice"),
         generateStoryAssetOwnership("Professor Warren Rice", "Professor of Languages", "resolution", "02061"),
         extracurricularActivityFailedStudents,
         addOneTabletTokenResolution,
       ],
-      2: [extracurricularActivityProfessorWarrenKidnapped, generateCampaignLogEntry("resolution", 1, "the students were rescued")],
-      3: [extracurricularActivityProfessorWarrenKidnapped, generateCampaignLogEntry("resolution", 1, "the Experiment was defeated")],
+      2: [extracurricularActivityProfessorWarrenKidnapped, generateCampaignLogEntry("resolution", 1, "The students were rescued")],
+      3: [extracurricularActivityProfessorWarrenKidnapped, generateCampaignLogEntry("resolution", 1, "The Experiment was defeated")],
       4: [
-        generateCampaignLogEntry("resolution", 1, "the investigators were unconscious for several hours"),
+        generateCampaignLogEntry("resolution", 1, "The investigators were unconscious for several hours"),
         extracurricularActivityProfessorWarrenKidnapped,
         earnOneBonusExperianceResolution,
         extracurricularActivityFailedStudents,
