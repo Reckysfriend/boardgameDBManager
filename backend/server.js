@@ -21,7 +21,58 @@ app.get("/players", async (req, res, next) => {
     next(err);
   }
 });
+app.post("/session", async (req, res, next) => {
+  try {
+    const post_values = {
+      played_at: req.body.played_at,
+      game: req.body.game,
+    };
+    const session = await sql`insert into session ${sql(post_values, "played_at", "game")} returning id`;
+    res.send(session[0].id);
+  } catch (err) {
+    next(err);
+  }
+});
+app.post("/game_session", async (req, res, next) => {
+  try {
+    const post_values = {
+      game_session: req.body.game_session,
+      player: req.body.player,
+    };
+    const session = await sql`insert into session ${sql(post_values, "played_at", "game")}`;
+    res.sendStatus(200);
+    res.st;
+  } catch (err) {
+    next(err);
+  }
+});
+async function CreateSession(data, sql) {
+  const post_values = { played_at: data.played_at, game: data.game };
+  const session = await sql`insert into session ${sql(post_values, "played_at", "game")} returning id`;
+  return session[0].id;
+}
+async function CreateSessionPlayers(data, sql) {
+  for (const player of data) {
+    const post_values = { played_at: player.game_session, game: player.player };
+    const game_session = await sql`insert into session_player ${sql(post_values, "game_session", "player")}`;
+  }
+}
 // ------------------------------------------------------------ Arkham Horror LCG ------------------------------------------------------------ //
+app.post("/arkhamlcg/sessions/create", async (req, res, next) => {
+  try {
+    const sessionArray = req.body.session;
+
+    sql.begin(async (sql) => {
+      const session = CreateSession(sql);
+      const sessionPlayersArray = req.body.sessionPlayers;
+      sessionPlayersArray.unshift(session);
+      CreateSessionPlayers(sessionPlayersArray, sql);
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
 app.get("/arkhamlcg/campaigns", async (req, res, next) => {
   try {
     const campaigns = await sql`select * from arkham_horror_lcg_campaigns`;
@@ -69,7 +120,6 @@ app.post("/arkhamlcg/players", async (req, res, next) => {
     const array = req.body;
     for (const player of array) {
       const post_values = { player_id: player.player_name, campaign_id: player.campaign_id, investigator_name: player.investigator, deck_link: null };
-      console.log("Post Values:", post_values);
       const campaign_player =
         await sql`insert into arkham_horror_lcg_campaigns_players ${sql(post_values, "player_id", "campaign_id", "investigator_name", "deck_link")}`;
     }

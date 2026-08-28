@@ -107,7 +107,9 @@ async function LoadSelectedCampaignByID(id) {
   return selectedCampaign;
 }
 async function DisplaySelectedCampaignByID(id, name) {
-  // Fetches all active players for scenario
+  // Sets the state value to current campaign
+  currentSelectedCampaignID = id;
+  // Fetches all active players for campaign
   activePlayers = await FetchActivePlayers(id);
   // Fetches all scenarios by the given ID
   const selectedCampaign = await LoadSelectedCampaignByID(id);
@@ -420,9 +422,13 @@ async function AddScenario(scenario, campaign, activePlayers) {
 
   BuildAddScenarioTitleArea(scenario, campaign);
   BuildAddScenarioVictoryDisplayScreen(scenario, campaign);
-  BuildAddScenarioCampaignLogArea();
-  buildAddScenarioOwnershipArea();
-  buildAddScenarioPlayerArea();
+
+  const miscArea = createAppendableDivObject("miscArea", "flex pad-1 bg-100-purple", newContainer);
+  BuildAddScenarioCampaignLogArea(miscArea);
+  buildAddScenarioOwnershipArea(miscArea);
+  buildAddScenarioPlayerArea(miscArea);
+
+  GenerateDatabaseObject();
 }
 async function BuildAddScenarioVictoryDisplayScreen(scenario, campaign) {
   const victoryDisplay = allScenarioResolutions[campaign][scenario].victoryDisplay;
@@ -472,6 +478,7 @@ function BuildAddScenarioTitleArea(scenario, campaign) {
   });
   const resolutionDropdown = createAppendableDropdownObject("scenarioResolution", resolutionArray);
   resolutionArea.append(resolutionDropdown);
+  const playedAt = createAppendableDateObject("playedAt", "", "playedAt", resolutionArea);
 
   const allSelectElements = document.getElementsByName(resolutionDropdown.name);
   allSelectElements.forEach((element) => {
@@ -499,8 +506,8 @@ function BuildAddScenarioTitleArea(scenario, campaign) {
     });
   });
 }
-function BuildAddScenarioCampaignLogArea() {
-  const div = createAppendableDivObject("campaignLogArea", "w-1/3 h-1/4 bg-blue-200 flex flex-col", newContainer);
+function BuildAddScenarioCampaignLogArea(miscDiv) {
+  const div = createAppendableDivObject("campaignLogArea", "w-1/3 h-1/4 bg-blue-200 flex flex-col", miscDiv);
   const title = createAppendableH1Object("campaignLogTitle", "Campaign Log", "text-center", div);
 
   const campaignLogList = document.createElement("ul");
@@ -513,23 +520,72 @@ function BuildAddScenarioCampaignLogArea() {
   const tokenDiv = createAppendableDivObject("campaignLogChaosToken", "bg-red-100 w-1/2", tokenxpDiv);
   createAppendablePElement("campaignLogToken", "Chaos Token", "text-center", tokenDiv);
 }
-function buildAddScenarioOwnershipArea() {
-  const div = createAppendableDivObject("ownershipDiv", "bg-green-100 w-1/3", newContainer);
+function buildAddScenarioOwnershipArea(miscDiv) {
+  const div = createAppendableDivObject("ownershipDiv", "bg-green-100 w-1/3", miscDiv);
   const title = createAppendableH1Object("ownershipTitle", "Ownership", "text-center", div);
 
   createAppendablePElement("ownershipCardName", "", "text-center", div);
 }
-function buildAddScenarioPlayerArea() {
-  const div = createAppendableDivObject("scenarioPlayerArea", "w-1/3 h-1/4 bg-pink-200 flex flex-col", newContainer);
+function buildAddScenarioPlayerArea(miscDiv) {
+  const div = createAppendableDivObject("scenarioPlayerArea", "w-1/3 h-1/4 bg-pink-200 flex flex-col", miscDiv);
   const title = createAppendableH1Object("scenarioPlayerAreaTitle", "Player Area", "text-center", div);
+  const investigatorStatus = [
+    { Name: "Alive", Value: "Alive" },
+    { Name: "Resigned", Value: "Resigned" },
+    { Name: "Defeated", Value: "Defeated" },
+    { Name: "Defeated (Trauma)", Value: "Defeated (Trauma)" },
+    { Name: "Defeated (Physical)", Value: "Defeated (Physical)" },
+    { Name: "Driven Insane", Value: "Driven Insane" },
+    { Name: "Killed", Value: "Killed" },
+    { Name: "Pre Game", Value: "Pre Game" },
+  ];
 
   const playerDiv = createAppendableDivObject("players", "", div);
   let i = 1;
   activePlayers.forEach((player) => {
     const groupDiv = createAppendableDivObject(`group${i}Div `, "flex", playerDiv);
-    const players = createAppendablePElement(`player${i}Name `, `${player.playerName}`, "", groupDiv);
+    const players = createAppendablePElement(`player${i}Name `, `${player.playerName} `, "", groupDiv);
     players.textContent = players.textContent + " -     ";
-    const invests = createAppendablePElement(` player${i}Investigator`, `${player.investigatorName}`, "", groupDiv);
+    const invests = createAppendablePElement(`player${i}Investigator`, ` ${player.investigatorName}`, "", groupDiv);
+    const dropdown = createAppendableDropdownObject(`player${i}InvestigatorStatus`, investigatorStatus);
+    groupDiv.append(dropdown);
+    const mentalDropdown = [
+      { Name: "Mental Trauma", Value: null },
+      { Name: 0, Value: 0 },
+      { Name: 1, Value: 1 },
+      { Name: 2, Value: 2 },
+      { Name: 3, Value: 3 },
+      { Name: 4, Value: 4 },
+      { Name: 5, Value: 5 },
+    ];
+    const physicalDropdown = [
+      { Name: "Physical Trauma", Value: null },
+      { Name: 0, Value: 0 },
+      { Name: 1, Value: 1 },
+      { Name: 2, Value: 2 },
+      { Name: 3, Value: 3 },
+      { Name: 4, Value: 4 },
+      { Name: 5, Value: 5 },
+    ];
+    const experianceDropdown = [
+      { Name: "Experiance", Value: null },
+      { Name: 0, Value: 0 },
+      { Name: 1, Value: 1 },
+      { Name: 2, Value: 2 },
+      { Name: 3, Value: 3 },
+      { Name: 4, Value: 4 },
+      { Name: 5, Value: 5 },
+    ];
+
+    console.log(mentalDropdown);
+    const traumaXPDiv = createAppendableDivObject("traumaXPDiv", "", groupDiv);
+    const traumaMental = createAppendableDropdownObject(`player${i}MentalTrauma`, mentalDropdown);
+    const traumaPhysical = createAppendableDropdownObject(`player${i}PhysicalTrauma`, physicalDropdown);
+    const experiance = createAppendableDropdownObject(`player${i}Experiance`, experianceDropdown);
+
+    traumaXPDiv.append(traumaMental);
+    traumaXPDiv.append(traumaPhysical);
+    traumaXPDiv.append(experiance);
   });
 }
 function UpdateCampaignLog(eav) {
@@ -600,7 +656,32 @@ function ScenarioHandler(eav) {
   UpdateChaosTokens(eav);
   UpdateOwnership(eav);
 }
+function GenerateDatabaseObject() {
+  // Session
+  const playedAt = document.getElementById("playedAt");
+  const sessionDB = {
+    played_at: playedAt.value,
+    game: "Arkham Horror: The Card Game",
+  };
 
+  // Session Players
+  const sessionPlayersDB = [];
+  activePlayers.forEach((player) => {
+    sessionPlayersDB.push(player);
+  });
+  // Scenario
+  const scenarioDB = [];
+  // EAV
+
+  const dbObject = {
+    Session: sessionDB,
+    SessionPlayers: sessionPlayersDB,
+    Scenario: scenarioDB,
+    EAV: entityAttributeValueObject,
+  };
+
+  console.log(dbObject);
+}
 // ------------------------------------------------------------ Utility Functions ------------------------------------------------------------ //
 async function updateDisplay() {
   allCampaigns = await LoadAllCampaigns();
