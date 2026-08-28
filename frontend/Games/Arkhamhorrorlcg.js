@@ -3,6 +3,7 @@
 const bodyElement = document.body;
 // Holds the current campaign ID for navigation
 let currentSelectedCampaignID = null;
+let currentSelectedCampaignScenarioOrder = null;
 // Holds the current active players of selected campaign
 let activePlayers = [];
 // Fetches all Arkham Horror Campaigns from my backend
@@ -109,10 +110,13 @@ async function LoadSelectedCampaignByID(id) {
 async function DisplaySelectedCampaignByID(id, name) {
   // Sets the state value to current campaign
   currentSelectedCampaignID = id;
+
   // Fetches all active players for campaign
   activePlayers = await FetchActivePlayers(id);
   // Fetches all scenarios by the given ID
   const selectedCampaign = await LoadSelectedCampaignByID(id);
+  // Sets the current scenario order number
+  currentSelectedCampaignScenarioOrder = selectedCampaign.length;
   // Clears the screen
   clearScreen(newContainer);
   // Create the Title object and allow it 20% of the screen
@@ -427,8 +431,6 @@ async function AddScenario(scenario, campaign, activePlayers) {
   BuildAddScenarioCampaignLogArea(miscArea);
   buildAddScenarioOwnershipArea(miscArea);
   buildAddScenarioPlayerArea(miscArea);
-
-  GenerateDatabaseObject();
 }
 async function BuildAddScenarioVictoryDisplayScreen(scenario, campaign) {
   const victoryDisplay = allScenarioResolutions[campaign][scenario].victoryDisplay;
@@ -479,6 +481,19 @@ function BuildAddScenarioTitleArea(scenario, campaign) {
   const resolutionDropdown = createAppendableDropdownObject("scenarioResolution", resolutionArray);
   resolutionArea.append(resolutionDropdown);
   const playedAt = createAppendableDateObject("playedAt", "", "playedAt", resolutionArea);
+  const playLocations = [
+    { Name: "Table", Value: "Table" },
+    { Name: "Tabletop Simulator", Value: "Tabletop Simulator" },
+  ];
+  const playedLocation = createAppendableDropdownObject("playedLocation", playLocations);
+  resolutionArea.append(playedLocation);
+  const dbButton = createAppendableButtonObject(
+    "Test DB",
+    "dbButton",
+    resolutionArea,
+    () => LogScenario(GenerateDatabaseObject(scenario)),
+    "bg-red-200",
+  );
 
   const allSelectElements = document.getElementsByName(resolutionDropdown.name);
   allSelectElements.forEach((element) => {
@@ -550,7 +565,7 @@ function buildAddScenarioPlayerArea(miscDiv) {
     const dropdown = createAppendableDropdownObject(`player${i}InvestigatorStatus`, investigatorStatus);
     groupDiv.append(dropdown);
     const mentalDropdown = [
-      { Name: "Mental Trauma", Value: null },
+      { Name: "Mental Trauma", Value: 0 },
       { Name: 0, Value: 0 },
       { Name: 1, Value: 1 },
       { Name: 2, Value: 2 },
@@ -559,7 +574,7 @@ function buildAddScenarioPlayerArea(miscDiv) {
       { Name: 5, Value: 5 },
     ];
     const physicalDropdown = [
-      { Name: "Physical Trauma", Value: null },
+      { Name: "Physical Trauma", Value: 0 },
       { Name: 0, Value: 0 },
       { Name: 1, Value: 1 },
       { Name: 2, Value: 2 },
@@ -568,7 +583,7 @@ function buildAddScenarioPlayerArea(miscDiv) {
       { Name: 5, Value: 5 },
     ];
     const experianceDropdown = [
-      { Name: "Experiance", Value: null },
+      { Name: "Experiance", Value: 0 },
       { Name: 0, Value: 0 },
       { Name: 1, Value: 1 },
       { Name: 2, Value: 2 },
@@ -577,7 +592,6 @@ function buildAddScenarioPlayerArea(miscDiv) {
       { Name: 5, Value: 5 },
     ];
 
-    console.log(mentalDropdown);
     const traumaXPDiv = createAppendableDivObject("traumaXPDiv", "", groupDiv);
     const traumaMental = createAppendableDropdownObject(`player${i}MentalTrauma`, mentalDropdown);
     const traumaPhysical = createAppendableDropdownObject(`player${i}PhysicalTrauma`, physicalDropdown);
@@ -586,6 +600,7 @@ function buildAddScenarioPlayerArea(miscDiv) {
     traumaXPDiv.append(traumaMental);
     traumaXPDiv.append(traumaPhysical);
     traumaXPDiv.append(experiance);
+    i++;
   });
 }
 function UpdateCampaignLog(eav) {
@@ -620,7 +635,6 @@ function UpdateChaosTokens(eav) {
       if (entity.key.includes("added")) {
         tokenText += `+${entity.value} ${entity.name}`;
       } else if (entity.key.includes("removed")) {
-        console.log("Token Removed");
       }
     }
   });
@@ -643,44 +657,107 @@ function UpdateOwnership(eav) {
 
       const activePlayersDropdown = createAppendableDropdownObject(`${entity.name}Ownership`, activeInvestigators);
 
+      activePlayersDropdown.addEventListener("change", () => {
+        entity.value = activePlayersDropdown.value;
+      });
+
       ownershipElement.append(label);
       ownershipElement.append(activePlayersDropdown);
     }
   });
-  console.log(activeInvestigators);
 }
 function ScenarioHandler(eav) {
-  console.log(eav);
   UpdateCampaignLog(eav);
   UpdateExperianceEarnt(eav);
   UpdateChaosTokens(eav);
   UpdateOwnership(eav);
 }
-function GenerateDatabaseObject() {
+async function GenerateDatabaseObject(scenario) {
   // Session
   const playedAt = document.getElementById("playedAt");
   const sessionDB = {
     played_at: playedAt.value,
     game: "Arkham Horror: The Card Game",
   };
+  // Player Entry
 
+  const playerID = activePlayers.map((player) =>
+    allPlayersArray.find((p) => {
+      return player.playerName === p.name;
+    }),
+  );
+  console.log(playerID);
+  const playerEntries = [];
+  let i = 1;
+  playerID.forEach((player) => {
+    const mental = document.getElementsByName(`player${i}MentalTrauma`)[0].value;
+    const physical = document.getElementsByName(`player${i}PhysicalTrauma`)[0].value;
+    const experiance = document.getElementsByName(`player${i}Experiance`)[0].value;
+    const status = document.getElementsByName(`player${i}InvestigatorStatus`)[0].value;
+
+    const playerEntry = {
+      player: player.id,
+      scenario_id: "",
+      xp_gained: experiance,
+      mental_trauma_gained: mental,
+      physical_trauma_gained: physical,
+      investigator_status: status,
+    };
+    playerEntries.push(playerEntry);
+    i++;
+  });
   // Session Players
+
   const sessionPlayersDB = [];
-  activePlayers.forEach((player) => {
-    sessionPlayersDB.push(player);
+  // Adds player ID for Session
+  playerID.forEach((player) => {
+    sessionPlayersDB.push(player.id);
   });
   // Scenario
-  const scenarioDB = [];
-  // EAV
 
+  const location = document.getElementsByName("playedLocation");
+  const resolution = document.getElementsByName("scenarioResolution");
+  // Match the scenario with its type and give different order values depending on type
+  const type = arkhamScenariosTypes.find((s) => {
+    return s.Name === scenario;
+  });
+  let scenarioOrderNumber = null;
+  if (type.Type === "Scenario" || type.Type === "Challange Scenario" || type.Type === "Standalone") {
+    scenarioOrderNumber = currentSelectedCampaignScenarioOrder + 1;
+  } else if (type.Type === "Interlude" || type.Type === "Prelude") {
+    scenarioOrderNumber = currentSelectedCampaignScenarioOrder + 0.1;
+  }
+
+  const scenarioDB = {
+    campaign_id: currentSelectedCampaignID,
+    session_id: "",
+    name: scenario,
+    scenario_order: scenarioOrderNumber,
+    resolution: resolution[0].value,
+    play_location: location[0].value,
+    is_legacy_status: false,
+  };
+
+  // DB Object to send to DB
   const dbObject = {
     Session: sessionDB,
     SessionPlayers: sessionPlayersDB,
     Scenario: scenarioDB,
+    PlayerEntry: playerEntries,
     EAV: entityAttributeValueObject,
   };
 
-  console.log(dbObject);
+  return dbObject;
+}
+async function LogScenario(data) {
+  const url = "http://localhost:3000/arkhamlcg/sessions/create";
+  const response = await fetch(url, {
+    method: "POST",
+    body: JSON.stringify(await data),
+    headers: {
+      "Content-Type": "application/json",
+    },
+  });
 }
 // ------------------------------------------------------------ Utility Functions ------------------------------------------------------------ //
 async function updateDisplay() {
@@ -1148,6 +1225,113 @@ const challengeScenarios = [
   "Aura of Faith",
   "Enthralling Encore",
 ];
+const arkhamScenariosTypes = [
+  // Night of the Zealot (no interludes)
+  { Name: "The Gathering", Type: "Scenario" },
+  { Name: "The Midnight Masks", Type: "Scenario" },
+  { Name: "The Devourer Below", Type: "Scenario" },
 
+  // The Dunwich Legacy
+  { Name: "Extracurricular Activity", Type: "Scenario" },
+  { Name: "The House Always Wins", Type: "Scenario" },
+  { Name: "Armitage's Fate", Type: "Interlude" },
+  { Name: "The Miskatonic Museum", Type: "Scenario" },
+  { Name: "The Essex County Express", Type: "Scenario" },
+  { Name: "Blood on the Altar", Type: "Scenario" },
+  { Name: "The Survivors", Type: "Interlude" },
+  { Name: "Undimensioned and Unseen", Type: "Scenario" },
+  { Name: "Where Doom Awaits", Type: "Scenario" },
+  { Name: "Lost in Time and Space", Type: "Scenario" },
+
+  // The Path to Carcosa
+  { Name: "Curtain Call", Type: "Scenario" },
+  { Name: "The Last King", Type: "Scenario" },
+  { Name: "Lunacy's Reward", Type: "Interlude" },
+  { Name: "Echoes of the Past", Type: "Scenario" },
+  { Name: "The Unspeakable Oath", Type: "Scenario" },
+  { Name: "Lost Soul", Type: "Interlude" },
+  { Name: "A Phantom of Truth", Type: "Scenario" },
+  { Name: "The Pallid Mask", Type: "Scenario" },
+  { Name: "Black Stars Rise", Type: "Scenario" },
+  { Name: "Dim Carcosa", Type: "Scenario" },
+
+  // The Forgotten Age
+  { Name: "Prologue", Type: "Prelude" },
+  { Name: "The Untamed Wilds", Type: "Scenario" },
+  { Name: "Restless Nights", Type: "Interlude" },
+  { Name: "The Doom of Eztli", Type: "Scenario" },
+  { Name: "Expedition's End", Type: "Interlude" },
+  { Name: "Threads of Fate", Type: "Scenario" },
+  { Name: "The Boundary Beyond", Type: "Scenario" },
+  { Name: "The Jungle Beckons", Type: "Interlude" },
+  { Name: "Heart of the Elders", Type: "Scenario" },
+  { Name: "The City of Archives", Type: "Scenario" },
+  { Name: "Those Held Captive", Type: "Interlude" },
+  { Name: "The Depths of Yoth", Type: "Scenario" },
+  { Name: "The Darkness", Type: "Interlude" },
+  { Name: "Shattered Aeons", Type: "Scenario" },
+  { Name: "Turn Back Time", Type: "Scenario" },
+
+  // The Circle Undone (interlude titles unverified — see note)
+  { Name: "Disappearance at the Twilight Estate", Type: "Scenario" },
+  { Name: "The Witching Hour", Type: "Scenario" },
+  { Name: "At Death's Doorstep", Type: "Scenario" },
+  { Name: "The Secret Name", Type: "Scenario" },
+  { Name: "The Wages of Sin", Type: "Scenario" },
+  { Name: "For the Greater Good", Type: "Scenario" },
+  { Name: "Union and Disillusion", Type: "Scenario" },
+  { Name: "In the Clutches of Chaos", Type: "Scenario" },
+  { Name: "Before the Black Throne", Type: "Scenario" },
+
+  // The Dream-Eaters (interlude titles unverified)
+  { Name: "Beyond the Gates of Sleep", Type: "Scenario" },
+  { Name: "Waking Nightmare", Type: "Scenario" },
+  { Name: "The Search for Kadath", Type: "Scenario" },
+  { Name: "A Thousand Shapes of Horror", Type: "Scenario" },
+  { Name: "Dark Side of the Moon", Type: "Scenario" },
+  { Name: "Point of No Return", Type: "Scenario" },
+  { Name: "Where the Gods Dwell", Type: "Scenario" },
+  { Name: "Weaver of the Cosmos", Type: "Scenario" },
+
+  // The Innsmouth Conspiracy (interlude titles unverified)
+  { Name: "The Pit of Despair", Type: "Scenario" },
+  { Name: "The Vanishing of Elina Harper", Type: "Scenario" },
+  { Name: "In Too Deep", Type: "Scenario" },
+  { Name: "Devil Reef", Type: "Scenario" },
+  { Name: "Horror in High Gear", Type: "Scenario" },
+  { Name: "A Light in the Fog", Type: "Scenario" },
+  { Name: "The Lair of Dagon", Type: "Scenario" },
+  { Name: "Into the Maelstrom", Type: "Scenario" },
+
+  // Standalone Scenarios
+  { Name: "Curse of the Rougarou", Type: "Standalone" },
+  { Name: "Carnevale of Horrors", Type: "Standalone" },
+  { Name: "The Labyrinths of Lunacy", Type: "Standalone" },
+  { Name: "Guardians of the Abyss", Type: "Standalone" },
+  { Name: "Murder at the Excelsior Hotel", Type: "Standalone" },
+  { Name: "Barkham Horror: The Meddling of Meowlathotep", Type: "Standalone" },
+  { Name: "The Blob That Ate Everything", Type: "Standalone" },
+  { Name: "War of the Outer Gods", Type: "Standalone" },
+  { Name: "Machinations Through Time", Type: "Standalone" },
+  { Name: "Fortune and Folly", Type: "Standalone" },
+  { Name: "The Blob That Ate Everything Else!", Type: "Standalone" },
+  { Name: "The Midwinter Gala", Type: "Standalone" },
+  { Name: "Film Fatale", Type: "Standalone" },
+
+  // Challenge Scenarios (Parallel Investigator packs)
+  { Name: "Read or Die", Type: "Challenge Scenario" },
+  { Name: "All or Nothing", Type: "Challenge Scenario" },
+  { Name: "Bad Blood", Type: "Challenge Scenario" },
+  { Name: "By the Book", Type: "Challenge Scenario" },
+  { Name: "Red Tide Rising", Type: "Challenge Scenario" },
+  { Name: "On the Road Again", Type: "Challenge Scenario" },
+  { Name: "Laid to Rest", Type: "Challenge Scenario" },
+  { Name: "Path of the Righteous", Type: "Challenge Scenario" },
+  { Name: "Relics of the Past", Type: "Challenge Scenario" },
+  { Name: "Hunting for Answers", Type: "Challenge Scenario" },
+  { Name: "Pistols and Pearls", Type: "Challenge Scenario" },
+  { Name: "Aura of Faith", Type: "Challenge Scenario" },
+  { Name: "Enthralling Encore", Type: "Challenge Scenario" },
+];
 // ------------------------------------------------------------ Exports ------------------------------------------------------------ //
 export { displayArkhamHorrorCampaigns };

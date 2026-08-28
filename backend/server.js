@@ -61,12 +61,15 @@ async function CreateSessionPlayers(data, sql) {
 app.post("/arkhamlcg/sessions/create", async (req, res, next) => {
   try {
     const sessionArray = req.body.session;
+    console.log("Body: ", req.body);
 
     sql.begin(async (sql) => {
+      /*
       const session = CreateSession(sql);
       const sessionPlayersArray = req.body.sessionPlayers;
       sessionPlayersArray.unshift(session);
       CreateSessionPlayers(sessionPlayersArray, sql);
+      */
     });
   } catch (err) {
     next(err);
