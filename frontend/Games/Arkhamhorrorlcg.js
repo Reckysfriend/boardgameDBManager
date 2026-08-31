@@ -105,6 +105,7 @@ async function LoadSelectedCampaignByID(id) {
   const url = `http://localhost:3000/arkhamlcg/scenarios/${id}`;
   const response = await fetch(url);
   const result = await response.json();
+  selectedCampaign.push(result);
   return selectedCampaign;
 }
 async function DisplaySelectedCampaignByID(id, name) {
@@ -115,6 +116,7 @@ async function DisplaySelectedCampaignByID(id, name) {
   activePlayers = await FetchActivePlayers(id);
   // Fetches all scenarios by the given ID
   const selectedCampaign = await LoadSelectedCampaignByID(id);
+  console.log("Selected Campaign: ", selectedCampaign);
   // Sets the current scenario order number
   currentSelectedCampaignScenarioOrder = selectedCampaign.length;
   // Clears the screen
@@ -126,11 +128,11 @@ async function DisplaySelectedCampaignByID(id, name) {
   title.appendChild(titelText);
   newContainer.append(title);
   // Grid for area below title
-  const gridDiv = await createAppendableDivObject("grid", "grid grid-cols-8 h-4/5", bodyElement);
+  const gridDiv = createAppendableDivObject("grid", "grid grid-cols-8 h-4/5", bodyElement);
   // Player Area
-  const playerArea = await createAppendableDivObject("playerArea", "bg-green-200 col-span-2", gridDiv);
+  const playerArea = createAppendableDivObject("playerArea", "bg-green-200 col-span-2", gridDiv);
 
-  const playerAreaGrid = await createAppendableDivObject("playerAreaGrid", "grid grid-cols-2 grid-rows-2 gap-2 h-full", playerArea);
+  const playerAreaGrid = createAppendableDivObject("playerAreaGrid", "grid grid-cols-2 grid-rows-2 gap-2 h-full", playerArea);
   for (let i = 0; i < activePlayers.length; i++) {
     const playerElement = createAppendableDivObject(`${i + 1}`, "bg-gray-200 m-2", playerAreaGrid);
     const playerH1 = document.createElement("h1");
@@ -147,15 +149,19 @@ async function DisplaySelectedCampaignByID(id, name) {
   gridDiv.append(scenarioArea);
   // Create the list container and loop through all fetched scenarios
   const scenarioList = document.createElement("ul");
+  let i = 0;
   selectedCampaign.forEach((scenario) => {
     const liElement = document.createElement("li");
     liElement.classList = "odd:bg-gray-300 even:bg-gray-200 hover:bg-green-100";
     const scenarioName = document.createElement("h1");
-    const scenarioNameText = document.createTextNode(`${scenario.name}`);
+    const scenarioNameText = document.createTextNode(`${scenario[i].name}`);
     scenarioName.appendChild(scenarioNameText);
+    liElement.append(scenarioName);
 
     scenarioList.append(liElement);
+    i++;
   });
+  scenarioArea.append(scenarioList);
   // Button to add new scenarios
   const addButton = document.createElement("li");
   addButton.classList = "bg-gray-200 text-center hover:bg-green-100";

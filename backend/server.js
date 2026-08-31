@@ -60,7 +60,6 @@ async function CreateSessionPlayers(sessionID, players, sql) {
   }
 }
 async function CreateScenarioEntry(sessionID, data, sql) {
-  console.log("Inside ScenarioEntry");
   const post_values = {
     campaign_id: data.campaign_id,
     session_id: sessionID,
@@ -112,28 +111,16 @@ app.post("/arkhamlcg/sessions/create", async (req, res, next) => {
     const scenarioEntryArray = req.body.Scenario;
     const scenarioPlayerEntryArray = req.body.PlayerEntry;
     const scenarioEAV = req.body.EAV;
-    console.log("Body: ", req.body);
 
     sql.begin(async (sql) => {
-      console.log("Before CreateSession");
       const sessionID = await CreateSession(sessionArray, sql);
-      console.log("After CreateSession");
-
-      console.log("Before CreateSessionPlayers");
       CreateSessionPlayers(sessionID, sessionPlayersArray, sql);
-      console.log("After CreateSessionPlayers");
 
-      console.log("Before CreateScenarioEntry");
       const scenarioID = await CreateScenarioEntry(sessionID, scenarioEntryArray, sql);
-      console.log("After CreateScenarioEntry");
 
-      console.log("Before CreatePlayerEntry");
       CreatePlayerEntry(scenarioID, scenarioPlayerEntryArray, sql);
-      console.log("After CreatePlayerEntry");
 
-      console.log("Before EAV");
       CreateEAVEntry(scenarioID, scenarioEAV, sql);
-      console.log("After EAV");
     });
   } catch (err) {
     next(err);
@@ -181,7 +168,6 @@ app.delete("/arkhamlcg/campaigns/:id", async (req, res, next) => {
     next(err);
   }
 });
-
 app.post("/arkhamlcg/players", async (req, res, next) => {
   try {
     const array = req.body;
@@ -208,7 +194,7 @@ app.get("/arkhamlcg/scenarios", async (req, res, next) => {
 app.get("/arkhamlcg/scenarios/:campaignID", async (req, res, next) => {
   try {
     const scenarios = await sql`select * from arkham_horror_lcg_scenarios where campaign_id = ${req.params.campaignID}`;
-
+    console.log(scenarios);
     res.send(scenarios);
   } catch (err) {
     next(err);
