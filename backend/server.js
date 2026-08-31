@@ -47,29 +47,93 @@ app.post("/game_session", async (req, res, next) => {
   }
 });
 async function CreateSession(data, sql) {
-  const post_values = { played_at: data.played_at, game: data.game };
-  const session = await sql`insert into session ${sql(post_values, "played_at", "game")} returning id`;
+  console.log(data);
+  const post_values = { played_at: data.played_at, play_location: data.play_location, game: data.game };
+  console.log("Post: ", post_values);
+  const session = await sql`insert into session ${sql(post_values, "played_at", "play_location", "game")} returning id`;
   return session[0].id;
 }
-async function CreateSessionPlayers(data, sql) {
-  for (const player of data) {
-    const post_values = { played_at: player.game_session, game: player.player };
+async function CreateSessionPlayers(sessionID, players, sql) {
+  for (const player of players) {
+    const post_values = { game_session: sessionID, player: player };
     const game_session = await sql`insert into session_player ${sql(post_values, "game_session", "player")}`;
   }
+}
+async function CreateScenarioEntry(sessionID, data, sql) {
+  console.log("Inside ScenarioEntry");
+  const post_values = {
+    campaign_id: data.campaign_id,
+    session_id: sessionID,
+    name: data.name,
+    scenario_order: data.scenario_order,
+    resolution: data.resolution,
+    is_legacy_status: data.is_legacy_status,
+  };
+  console.log("Post: ", post_values);
+  const scenario =
+    await sql`insert into arkham_horror_lcg_scenarios ${sql(post_values, "campaign_id", "session_id", "name", "scenario_order", "resolution", "is_legacy_status")} returning id`;
+  return scenario[0].id;
+}
+async function CreatePlayerEntry(scenarioID, data, sql) {
+  data.forEach(async (player) => {
+    const post_values = {
+      player: player.player,
+      scenario_id: scenarioID,
+      xp_gained: player.xp_gained,
+      mental_trauma_gained: player.mental_trauma_gained,
+      physical_trauma_gained: player.physical_trauma_gained,
+      investigator_status: player.investigator_status,
+    };
+    const playerEntry =
+      await sql`insert into arkham_horror_lcg_player_entry ${sql(post_values, "player", "scenario_id", "xp_gained", "mental_trauma_gained", "physical_trauma_gained", "investigator_status")}`;
+  });
+}
+async function CreateEAVEntry(scenarioID, data, sql) {
+  data.forEach(async (eav) => {
+    const post_values = {
+      scenario_id: scenarioID,
+      entity_name: eav.name,
+      entity_type: eav.entity,
+      version: eav.version,
+      trigger_type: eav.triggerType,
+      key: eav.key,
+      value_type: eav.valueType,
+      value: eav.value,
+    };
+    const playerEntry =
+      await sql`insert into arkham_horror_lcg_eav ${sql(post_values, "scenario_id", "entity_name", "entity_type", "version", "trigger_type", "key", "value_type", "value")}`;
+  });
 }
 // ------------------------------------------------------------ Arkham Horror LCG ------------------------------------------------------------ //
 app.post("/arkhamlcg/sessions/create", async (req, res, next) => {
   try {
-    const sessionArray = req.body.session;
+    const sessionArray = req.body.Session;
+    const sessionPlayersArray = req.body.SessionPlayers;
+    const scenarioEntryArray = req.body.Scenario;
+    const scenarioPlayerEntryArray = req.body.PlayerEntry;
+    const scenarioEAV = req.body.EAV;
     console.log("Body: ", req.body);
 
     sql.begin(async (sql) => {
-      /*
-      const session = CreateSession(sql);
-      const sessionPlayersArray = req.body.sessionPlayers;
-      sessionPlayersArray.unshift(session);
-      CreateSessionPlayers(sessionPlayersArray, sql);
-      */
+      console.log("Before CreateSession");
+      const sessionID = await CreateSession(sessionArray, sql);
+      console.log("After CreateSession");
+
+      console.log("Before CreateSessionPlayers");
+      CreateSessionPlayers(sessionID, sessionPlayersArray, sql);
+      console.log("After CreateSessionPlayers");
+
+      console.log("Before CreateScenarioEntry");
+      const scenarioID = await CreateScenarioEntry(sessionID, scenarioEntryArray, sql);
+      console.log("After CreateScenarioEntry");
+
+      console.log("Before CreatePlayerEntry");
+      CreatePlayerEntry(scenarioID, scenarioPlayerEntryArray, sql);
+      console.log("After CreatePlayerEntry");
+
+      console.log("Before EAV");
+      CreateEAVEntry(scenarioID, scenarioEAV, sql);
+      console.log("After EAV");
     });
   } catch (err) {
     next(err);

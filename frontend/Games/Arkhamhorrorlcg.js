@@ -391,7 +391,6 @@ function updateFormIfValid() {
 function formValidilityCheck() {
   const form = document.getElementById("addplayerform");
   const formData = new FormData(form);
-
   if (formData.get("investigator_1") !== "" && formData.get("player_1") !== "") {
     return true;
   } else {
@@ -673,12 +672,6 @@ function ScenarioHandler(eav) {
   UpdateOwnership(eav);
 }
 async function GenerateDatabaseObject(scenario) {
-  // Session
-  const playedAt = document.getElementById("playedAt");
-  const sessionDB = {
-    played_at: playedAt.value,
-    game: "Arkham Horror: The Card Game",
-  };
   // Player Entry
 
   const playerID = activePlayers.map((player) =>
@@ -734,10 +727,15 @@ async function GenerateDatabaseObject(scenario) {
     name: scenario,
     scenario_order: scenarioOrderNumber,
     resolution: resolution[0].value,
-    play_location: location[0].value,
     is_legacy_status: false,
   };
-
+  // Session
+  const playedAt = document.getElementById("playedAt");
+  const sessionDB = {
+    played_at: playedAt.value,
+    game: "Arkham Horror: The Card Game",
+    play_location: location[0].value,
+  };
   // DB Object to send to DB
   const dbObject = {
     Session: sessionDB,

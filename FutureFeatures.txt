@@ -4,3 +4,6 @@
 
  # Player Modal
  - Make it so there is not always 4 investigators in a game, start with 1 and add more via add button
+
+ # Scenario DB 
+ - Add ability to have standaloens be part of campaign instead of scenario_type always defaulting to their type. 
