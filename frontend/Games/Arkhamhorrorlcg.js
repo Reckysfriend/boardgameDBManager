@@ -1,16 +1,22 @@
 // ------------------------------------------------------------ Global Variabls ------------------------------------------------------------ //
+// Gets a reference to the body element to be able to place our other elements
+const bodyElement = document.body;
 // Holds the current campaign ID for navigation
 let currentSelectedCampaignID = null;
+let currentSelectedCampaignScenarioOrder = null;
+// Holds the current active players of selected campaign
+let activePlayers = [];
 // Fetches all Arkham Horror Campaigns from my backend
 let allCampaigns = await LoadAllCampaigns();
 // Fetches all listed players in DB
-const allPlayers = await FetchAllPlayers();
-console.log(allPlayers);
+const allPlayersDict = await FetchAllPlayers();
+const allPlayersArray = Object.entries(allPlayersDict).map(([id, name]) => ({ id, name }));
 // Default for dropdown to check against to make sure there are valid values
 const dropdownDefault = { Name: "-", Value: "" };
 // Creates a container that holds all the new elements we need.
 const newContainer = document.createElement("div");
 newContainer.classList = "flex-1 h-screen";
+bodyElement.append(newContainer);
 async function LoadAllCampaigns() {
   const url = "http://localhost:3000/arkhamlcg/campaigns";
   const response = await fetch(url);
@@ -20,11 +26,12 @@ async function LoadAllCampaigns() {
 async function FetchAllPlayers() {
   const url = "http://localhost:3000/players";
   const response = await fetch(url);
-  const result = await response.json();
+  const responseJson = await response.json();
+  // AI Solution
+  const result = Object.fromEntries(responseJson.map((player) => [player.id, player.name]));
+  //
   return result;
 }
-// Gets a reference to the body element to be able to place our other elements
-const bodyElement = document.body;
 
 // ------------------------------------------------------------ Display All Campaigns ------------------------------------------------------------ //
 async function displayArkhamHorrorCampaigns() {
@@ -113,11 +120,18 @@ const url = `http://localhost:3000/arkhamlcg/players/${id}`
   console.log(players)
 }
 async function DisplaySelectedCampaignByID(id, name) {
+  // Sets the state value to current campaign
+  currentSelectedCampaignID = id;
+
+  // Fetches all active players for campaign
+  activePlayers = await FetchActivePlayers(id);
   // Fetches all scenarios by the given ID
   const allPlayersInCampaign = await LoadPlayersByCampaignId(id)
   const selectedCampaign = await LoadSelectedCampaignByID(id);
+  // Sets the current scenario order number
+  currentSelectedCampaignScenarioOrder = selectedCampaign.length;
   // Clears the screen
-  clearScreen();
+  clearScreen(newContainer);
   // Create the Title object and allow it 20% of the screen
   const title = document.createElement("h1");
   const titelText = document.createTextNode(`${name}`);
@@ -125,29 +139,21 @@ async function DisplaySelectedCampaignByID(id, name) {
   title.appendChild(titelText);
   newContainer.append(title);
   // Grid for area below title
-  const gridDiv = document.createElement("div");
-  gridDiv.classList = "grid grid-cols-8 h-4/5";
+  const gridDiv = await createAppendableDivObject("grid", "grid grid-cols-8 h-4/5", bodyElement);
   // Player Area
-  const playerArea = document.createElement("div");
-  playerArea.classList = "bg-green-200 col-span-2";
-  gridDiv.append(playerArea);
+  const playerArea = await createAppendableDivObject("playerArea", "bg-green-200 col-span-2", gridDiv);
 
-  const playerAreaGrid = document.createElement("div");
-  playerArea.append(playerAreaGrid);
-  playerAreaGrid.classList = "grid grid-cols-2 grid-rows-2 gap-2 h-full";
-  for (const player of allPlayersInCampaign) {
-    console.log(player)
-    const playerElement = document.createElement("div");
-    playerElement.classList = "bg-gray-200 m-2";
-    playerElement.id = `player${i + 1}`;
+  const playerAreaGrid = await createAppendableDivObject("playerAreaGrid", "grid grid-cols-2 grid-rows-2 gap-2 h-full", playerArea);
+  for (let i = 0; i < activePlayers.length; i++) {
+    const playerElement = createAppendableDivObject(`${i + 1}`, "bg-gray-200 m-2", playerAreaGrid);
     const playerH1 = document.createElement("h1");
-    const playerH1Text = document.createTextNode(`${player.id}: ${player.investigator}`);
-    playerH1.append(playerH1Text);
+    playerH1.append(document.createTextNode(activePlayers[i].playerName));
     playerElement.append(playerH1);
-    playerAreaGrid.append(playerElement);
-  }; 
 
-
+    const playerPElement = document.createElement("p");
+    playerPElement.append(document.createTextNode(activePlayers[i].investigatorName));
+    playerElement.append(playerPElement);
+  }
   // Scenario Area
   const scenarioArea = document.createElement("div");
   scenarioArea.classList = "bg-blue-200 col-span-6";
@@ -194,7 +200,7 @@ async function DisplaySelectedCampaignByID(id, name) {
   confirmButton.classList = "bg-green-200 hover:bg-green-300 text-center";
   confirmButton.append(document.createTextNode("Confirm"));
   confirmButton.addEventListener("click", () => {
-    AddScenario(scenarioAddDropdown.value, name);
+    AddScenario(scenarioAddDropdown.value, name, activePlayers);
   });
   addScenarioDialog.append(confirmButton);
   // Close Button
@@ -209,6 +215,24 @@ async function DisplaySelectedCampaignByID(id, name) {
   scenarioArea.append(addScenarioDialog);
   //Appends all to container
   newContainer.append(gridDiv);
+}
+async function FetchActivePlayers(id) {
+  const url = `http://localhost:3000/arkhamlcg/campaigns/players/${id}`;
+  const response = await fetch(url, {
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json",
+    },
+  });
+  const players = await response.json();
+
+  // Coverts from numerical ID to name for use in object creation
+  let activePlayers = [];
+  players.forEach((p) => {
+    const player = { playerName: allPlayersDict[p.player_id], investigatorName: p.investigator_name };
+    activePlayers.push(player);
+  });
+  return activePlayers;
 }
 // ------------------------------------------------------------ Add & Remove Campaigns ------------------------------------------------------------ //
 async function AddCampaign() {
@@ -337,7 +361,7 @@ function createPlayerDiv(modal, campaignDiv, playerDiv) {
     // Take the player Array and reformat it for function
     const allPlayersCoverted = [];
     allPlayersCoverted.push(dropdownDefault);
-    allPlayers.forEach((player) => {
+    allPlayersArray.forEach((player) => {
       const players = { Name: player.name, Value: player.id };
       allPlayersCoverted.push(players);
     });
@@ -380,12 +404,19 @@ function updateFormIfValid() {
 function formValidilityCheck() {
   const form = document.getElementById("addplayerform");
   const formData = new FormData(form);
-
   if (formData.get("investigator_1") !== "" && formData.get("player_1") !== "") {
     return true;
   } else {
     return false;
   }
+}
+function createAppendableDivObject(id, classList, parentObject) {
+  const div = document.createElement("div");
+  div.classList = classList;
+  div.id = id;
+  parentObject.append(div);
+
+  return div;
 }
 // ------------------------------------------------------------ Add & Remove Players ------------------------------------------------------------ //
 // Dropdown for all investigators
@@ -395,7 +426,7 @@ function formValidilityCheck() {
 // ------------------------------------------------------------ Add & Remove Scenario ------------------------------------------------------------ //
 function AddScenarioToCampaign() {}
 let entityAttributeValueObject = [];
-async function AddScenario(scenario, campaign) {
+async function AddScenario(scenario, campaign, activePlayers) {
   // Pop up that shows all that campaigns scenarios, each standalone, each challange scenario.
   // When you click on one it takes you to a form based on that scenario.
   // -- Info needed --
@@ -403,11 +434,18 @@ async function AddScenario(scenario, campaign) {
   // Invest info
   // Victory Display
   // Campaign Log choices
+  clearScreen(newContainer);
+
+  BuildAddScenarioTitleArea(scenario, campaign);
   BuildAddScenarioVictoryDisplayScreen(scenario, campaign);
+
+  const miscArea = createAppendableDivObject("miscArea", "flex pad-1 bg-100-purple", newContainer);
+  BuildAddScenarioCampaignLogArea(miscArea);
+  buildAddScenarioOwnershipArea(miscArea);
+  buildAddScenarioPlayerArea(miscArea);
 }
 async function BuildAddScenarioVictoryDisplayScreen(scenario, campaign) {
   const victoryDisplay = allScenarioResolutions[campaign][scenario].victoryDisplay;
-  clearScreen();
   const victoryDisplayArea = document.createElement("div");
   victoryDisplayArea.classList = "flex h-1/3 overflow-x-auto gap-2";
   victoryDisplay.forEach((victory) => {
@@ -422,12 +460,315 @@ async function BuildAddScenarioVictoryDisplayScreen(scenario, campaign) {
       } else {
         entityAttributeValueObject = entityAttributeValueObject.filter((entity) => entity.UUID !== victory.UUID);
       }
+      ScenarioHandler(entityAttributeValueObject);
     });
+
     img.src = `/img/arkham_horror_lcg/Victory Display/${victory.img}`;
     victoryDisplayArea.append(img);
   });
   newContainer.append(victoryDisplayArea);
   const test = document.Elementby;
+}
+function BuildAddScenarioTitleArea(scenario, campaign) {
+  let oldResolution = null;
+  const resolutionNumbers = Object.keys(allScenarioResolutions[campaign][scenario].resolution);
+  const div = createAppendableDivObject("titleAreaScenarioDiv", "flex h-1/5", newContainer);
+  const titleArea = createAppendableDivObject("titleAreaScenario", "bg-red-100 w-1/2", div);
+  const title = document.createElement("h1");
+  title.classList = "text-center";
+  title.appendChild(document.createTextNode(`${scenario}`));
+  titleArea.append(title);
+
+  const resolutionArea = createAppendableDivObject("resolutionAreaScenario", "bg-green-100 w-1/2", div);
+  let resolutionArray = [];
+  resolutionNumbers.forEach((res) => {
+    if (res === "0") {
+      const res0 = { Name: "No resolution was reached", Value: res };
+      resolutionArray.push(res0);
+    } else {
+      const resolution = { Name: `Resolution ${res}`, Value: res };
+      resolutionArray.push(resolution);
+    }
+  });
+  const resolutionDropdown = createAppendableDropdownObject("scenarioResolution", resolutionArray);
+  resolutionArea.append(resolutionDropdown);
+  const playedAt = createAppendableDateObject("playedAt", "", "playedAt", resolutionArea);
+  const playLocations = [
+    { Name: "Table", Value: "Table" },
+    { Name: "Tabletop Simulator", Value: "Tabletop Simulator" },
+  ];
+  const playedLocation = createAppendableDropdownObject("playedLocation", playLocations);
+  resolutionArea.append(playedLocation);
+  const dbButton = createAppendableButtonObject(
+    "Test DB",
+    "dbButton",
+    resolutionArea,
+    () => LogScenario(GenerateDatabaseObject(scenario)),
+    "bg-red-200",
+  );
+
+  const allSelectElements = document.getElementsByName(resolutionDropdown.name);
+  allSelectElements.forEach((element) => {
+    element.addEventListener("change", (event) => {
+      const currentResolution = allScenarioResolutions[campaign][scenario].resolution[event.target.value];
+
+      // Removes any EAV entires from the old resolution
+      if (oldResolution !== null) {
+        oldResolution.forEach((res) => {
+          const uniqueID = entityAttributeValueObject.find((entity) => entity.UUID == res.UUID);
+          if (uniqueID !== undefined) {
+            entityAttributeValueObject = entityAttributeValueObject.filter((entity) => entity.UUID !== res.UUID);
+          }
+        });
+      }
+      // Adds the correct EAV entires for the newly selected resolution
+      currentResolution.forEach((res) => {
+        const uniqueID = entityAttributeValueObject.find((entity) => entity.UUID == res.UUID);
+        if (uniqueID == undefined) {
+          entityAttributeValueObject.push(res);
+        }
+      });
+      oldResolution = currentResolution;
+      ScenarioHandler(entityAttributeValueObject);
+    });
+  });
+}
+function BuildAddScenarioCampaignLogArea(miscDiv) {
+  const div = createAppendableDivObject("campaignLogArea", "w-1/3 h-1/4 bg-blue-200 flex flex-col", miscDiv);
+  const title = createAppendableH1Object("campaignLogTitle", "Campaign Log", "text-center", div);
+
+  const campaignLogList = document.createElement("ul");
+  campaignLogList.id = "campaignLogList";
+  div.append(campaignLogList);
+
+  const tokenxpDiv = createAppendableDivObject("campaignLogExtra", "flex mt-auto p-1", div);
+  const xpDiv = createAppendableDivObject("campaignLogExperiance", "bg-yellow-100 w-1/2", tokenxpDiv);
+  createAppendablePElement("campaignLogXp", "XP: ", "text-center", xpDiv);
+  const tokenDiv = createAppendableDivObject("campaignLogChaosToken", "bg-red-100 w-1/2", tokenxpDiv);
+  createAppendablePElement("campaignLogToken", "Chaos Token", "text-center", tokenDiv);
+}
+function buildAddScenarioOwnershipArea(miscDiv) {
+  const div = createAppendableDivObject("ownershipDiv", "bg-green-100 w-1/3", miscDiv);
+  const title = createAppendableH1Object("ownershipTitle", "Ownership", "text-center", div);
+
+  createAppendablePElement("ownershipCardName", "", "text-center", div);
+}
+function buildAddScenarioPlayerArea(miscDiv) {
+  const div = createAppendableDivObject("scenarioPlayerArea", "w-1/3 h-1/4 bg-pink-200 flex flex-col", miscDiv);
+  const title = createAppendableH1Object("scenarioPlayerAreaTitle", "Player Area", "text-center", div);
+  const investigatorStatus = [
+    { Name: "Alive", Value: "Alive" },
+    { Name: "Resigned", Value: "Resigned" },
+    { Name: "Defeated", Value: "Defeated" },
+    { Name: "Defeated (Trauma)", Value: "Defeated (Trauma)" },
+    { Name: "Defeated (Physical)", Value: "Defeated (Physical)" },
+    { Name: "Driven Insane", Value: "Driven Insane" },
+    { Name: "Killed", Value: "Killed" },
+    { Name: "Pre Game", Value: "Pre Game" },
+  ];
+
+  const playerDiv = createAppendableDivObject("players", "", div);
+  let i = 1;
+  activePlayers.forEach((player) => {
+    const groupDiv = createAppendableDivObject(`group${i}Div `, "flex", playerDiv);
+    const players = createAppendablePElement(`player${i}Name `, `${player.playerName} `, "", groupDiv);
+    players.textContent = players.textContent + " -     ";
+    const invests = createAppendablePElement(`player${i}Investigator`, ` ${player.investigatorName}`, "", groupDiv);
+    const dropdown = createAppendableDropdownObject(`player${i}InvestigatorStatus`, investigatorStatus);
+    groupDiv.append(dropdown);
+    const mentalDropdown = [
+      { Name: "Mental Trauma", Value: 0 },
+      { Name: 0, Value: 0 },
+      { Name: 1, Value: 1 },
+      { Name: 2, Value: 2 },
+      { Name: 3, Value: 3 },
+      { Name: 4, Value: 4 },
+      { Name: 5, Value: 5 },
+    ];
+    const physicalDropdown = [
+      { Name: "Physical Trauma", Value: 0 },
+      { Name: 0, Value: 0 },
+      { Name: 1, Value: 1 },
+      { Name: 2, Value: 2 },
+      { Name: 3, Value: 3 },
+      { Name: 4, Value: 4 },
+      { Name: 5, Value: 5 },
+    ];
+    const experianceDropdown = [
+      { Name: "Experiance", Value: 0 },
+      { Name: 0, Value: 0 },
+      { Name: 1, Value: 1 },
+      { Name: 2, Value: 2 },
+      { Name: 3, Value: 3 },
+      { Name: 4, Value: 4 },
+      { Name: 5, Value: 5 },
+    ];
+
+    const traumaXPDiv = createAppendableDivObject("traumaXPDiv", "", groupDiv);
+    const traumaMental = createAppendableDropdownObject(`player${i}MentalTrauma`, mentalDropdown);
+    const traumaPhysical = createAppendableDropdownObject(`player${i}PhysicalTrauma`, physicalDropdown);
+    const experiance = createAppendableDropdownObject(`player${i}Experiance`, experianceDropdown);
+
+    traumaXPDiv.append(traumaMental);
+    traumaXPDiv.append(traumaPhysical);
+    traumaXPDiv.append(experiance);
+    i++;
+  });
+}
+function UpdateCampaignLog(eav) {
+  const listElement = document.getElementById("campaignLogList");
+  listElement.replaceChildren();
+  eav.forEach((entity) => {
+    if (entity.entity === "campaign_log") {
+      const liElement = document.createElement("li");
+      const p = document.createElement("p");
+      p.textContent = entity.value;
+      liElement.append(p);
+
+      listElement.append(liElement);
+    }
+  });
+}
+function UpdateExperianceEarnt(eav) {
+  const xpElement = document.getElementById("campaignLogExperiance");
+  let totalXP = 0;
+  eav.forEach((entity) => {
+    if (entity.key === "xp_gained") {
+      totalXP += entity.value;
+    }
+  });
+  xpElement.textContent = `XP: ${totalXP}`;
+}
+function UpdateChaosTokens(eav) {
+  const tokenElement = document.getElementById("campaignLogToken");
+  let tokenText = "";
+  eav.forEach((entity) => {
+    if (entity.entity === "chaos_token") {
+      if (entity.key.includes("added")) {
+        tokenText += `+${entity.value} ${entity.name}`;
+      } else if (entity.key.includes("removed")) {
+      }
+    }
+  });
+  tokenElement.textContent = tokenText;
+}
+function UpdateOwnership(eav) {
+  const ownershipElement = document.getElementById("ownershipCardName");
+  ownershipElement.replaceChildren();
+  let activeInvestigators = [];
+
+  activePlayers.forEach((player) => {
+    const invest = { Name: player.investigatorName, Value: player.investigatorName };
+    activeInvestigators.push(invest);
+  });
+  eav.forEach((entity) => {
+    if (entity.key === "ownership") {
+      const label = document.createElement("label");
+      label.for = `${entity.name}Ownership`;
+      label.append(document.createTextNode(`${entity.name}:  `));
+
+      const activePlayersDropdown = createAppendableDropdownObject(`${entity.name}Ownership`, activeInvestigators);
+
+      activePlayersDropdown.addEventListener("change", () => {
+        entity.value = activePlayersDropdown.value;
+      });
+
+      ownershipElement.append(label);
+      ownershipElement.append(activePlayersDropdown);
+    }
+  });
+}
+function ScenarioHandler(eav) {
+  UpdateCampaignLog(eav);
+  UpdateExperianceEarnt(eav);
+  UpdateChaosTokens(eav);
+  UpdateOwnership(eav);
+}
+async function GenerateDatabaseObject(scenario) {
+  // Player Entry
+
+  const playerID = activePlayers.map((player) =>
+    allPlayersArray.find((p) => {
+      return player.playerName === p.name;
+    }),
+  );
+  console.log(playerID);
+  const playerEntries = [];
+  let i = 1;
+  playerID.forEach((player) => {
+    const mental = document.getElementsByName(`player${i}MentalTrauma`)[0].value;
+    const physical = document.getElementsByName(`player${i}PhysicalTrauma`)[0].value;
+    const experiance = document.getElementsByName(`player${i}Experiance`)[0].value;
+    const status = document.getElementsByName(`player${i}InvestigatorStatus`)[0].value;
+
+    const playerEntry = {
+      player: player.id,
+      scenario_id: "",
+      xp_gained: experiance,
+      mental_trauma_gained: mental,
+      physical_trauma_gained: physical,
+      investigator_status: status,
+    };
+    playerEntries.push(playerEntry);
+    i++;
+  });
+  // Session Players
+
+  const sessionPlayersDB = [];
+  // Adds player ID for Session
+  playerID.forEach((player) => {
+    sessionPlayersDB.push(player.id);
+  });
+  // Scenario
+
+  const location = document.getElementsByName("playedLocation");
+  const resolution = document.getElementsByName("scenarioResolution");
+  // Match the scenario with its type and give different order values depending on type
+  const type = arkhamScenariosTypes.find((s) => {
+    return s.Name === scenario;
+  });
+  let scenarioOrderNumber = null;
+  if (type.Type === "Scenario" || type.Type === "Challange Scenario" || type.Type === "Standalone") {
+    scenarioOrderNumber = currentSelectedCampaignScenarioOrder + 1;
+  } else if (type.Type === "Interlude" || type.Type === "Prelude") {
+    scenarioOrderNumber = currentSelectedCampaignScenarioOrder + 0.1;
+  }
+
+  const scenarioDB = {
+    campaign_id: currentSelectedCampaignID,
+    session_id: "",
+    name: scenario,
+    scenario_order: scenarioOrderNumber,
+    resolution: resolution[0].value,
+    is_legacy_status: false,
+  };
+  // Session
+  const playedAt = document.getElementById("playedAt");
+  const sessionDB = {
+    played_at: playedAt.value,
+    game: "Arkham Horror: The Card Game",
+    play_location: location[0].value,
+  };
+  // DB Object to send to DB
+  const dbObject = {
+    Session: sessionDB,
+    SessionPlayers: sessionPlayersDB,
+    Scenario: scenarioDB,
+    PlayerEntry: playerEntries,
+    EAV: entityAttributeValueObject,
+  };
+
+  return dbObject;
+}
+async function LogScenario(data) {
+  const url = "http://localhost:3000/arkhamlcg/sessions/create";
+  const response = await fetch(url, {
+    method: "POST",
+    body: JSON.stringify(await data),
+    headers: {
+      "Content-Type": "application/json",
+    },
+  });
 }
 // ------------------------------------------------------------ Utility Functions ------------------------------------------------------------ //
 async function updateDisplay() {
@@ -435,8 +776,8 @@ async function updateDisplay() {
   newContainer.replaceChildren();
   displayArkhamHorrorCampaigns();
 }
-function clearScreen() {
-  newContainer.replaceChildren();
+function clearScreen(constainer) {
+  constainer.replaceChildren();
 }
 function addDropdownWithOptGroups(array, selectElement, optName) {
   const optgroup = document.createElement("optgroup");
@@ -509,6 +850,24 @@ function createFormObject(id) {
   form.id = id;
 
   return form;
+}
+function createAppendableH1Object(id, text, classList, parentObject) {
+  const title = document.createElement("h1");
+  title.classList = classList;
+  title.id = id;
+  title.appendChild(document.createTextNode(text));
+  parentObject.append(title);
+
+  return title;
+}
+function createAppendablePElement(id, text, classList, parentObject) {
+  const p = document.createElement("p");
+  p.classList = classList;
+  p.id = id;
+  p.textContent = `${text} `;
+  parentObject.append(p);
+
+  return p;
 }
 const emptyEAVObject = {
   name: "",
@@ -589,10 +948,10 @@ function generateStoryAssetOwnership(name, version, trigger, img) {
     img: `${img}.jpg`,
     UUID: self.crypto.randomUUID(),
   };
+  return card;
 }
 // ------------------------------------------------------------ Non-boss Victory Point ------------------------------------------------------------ //
 const victoryDisplayWizardofYogSothoth = generateVictoryPoint("Wizard of Yog-Sothoth", "enemy", null, "default", 1, "02087");
-const victoryDisplayYithianObserver = generateVictoryPoint("Yithian Observer", "enemy", null, "default", 1, "01177");
 // ------------------------------------------------------------ Common Entries ------------------------------------------------------------ //
 const addOneSkullTokenResolution = generateChaosTokenEntry("skull", "resolution", 1);
 const addOneCultistTokenResolution = generateChaosTokenEntry("cultist", "resolution", 1);
@@ -618,12 +977,12 @@ const dunwichLegacyCampaign = [
 // >>>>> Extracurricular Activity <<<<< \\
 
 const extracurricularActivityProfessorWarrenKidnapped = generateCampaignLogEntry("resolution", "1", "Professor Warren Rice was kidnapped");
-const extracurricularActivityFailedStudents = generateCampaignLogEntry("resolution", "2", "the investigators failed to save the students");
+const extracurricularActivityFailedStudents = generateCampaignLogEntry("resolution", "2", "The investigators failed to save the students");
 const dunwichLegacyResolution = {
   "Extracurricular Activity": {
     victoryDisplay: [
-      victoryDisplayYithianObserver,
-      victoryDisplayYithianObserver,
+      generateVictoryPoint("Yithian Observer", "enemy", null, "default", 1, "01177"),
+      generateVictoryPoint("Yithian Observer", "enemy", null, "default", 1, "01177"),
       generateVictoryPoint("Orne Library", "location", null, "default", 1, "02050"),
       generateVictoryPoint("Dormitories", "location", null, "default", 1, "02052"),
       generateVictoryPoint("Faculty Offices", "location", "The Night is Still Young", "choice", 1, "02054"),
@@ -638,15 +997,15 @@ const dunwichLegacyResolution = {
         earnOneBonusExperianceResolution,
       ],
       1: [
-        generateCampaignLogEntry("resolution", 1, "the investigators rescued Professor Warren Rice"),
+        generateCampaignLogEntry("resolution", 1, "The investigators rescued Professor Warren Rice"),
         generateStoryAssetOwnership("Professor Warren Rice", "Professor of Languages", "resolution", "02061"),
         extracurricularActivityFailedStudents,
         addOneTabletTokenResolution,
       ],
-      2: [extracurricularActivityProfessorWarrenKidnapped, generateCampaignLogEntry("resolution", 1, "the students were rescued")],
-      3: [extracurricularActivityProfessorWarrenKidnapped, generateCampaignLogEntry("resolution", 1, "the Experiment was defeated")],
+      2: [extracurricularActivityProfessorWarrenKidnapped, generateCampaignLogEntry("resolution", 1, "The students were rescued")],
+      3: [extracurricularActivityProfessorWarrenKidnapped, generateCampaignLogEntry("resolution", 1, "The Experiment was defeated")],
       4: [
-        generateCampaignLogEntry("resolution", 1, "the investigators were unconscious for several hours"),
+        generateCampaignLogEntry("resolution", 1, "The investigators were unconscious for several hours"),
         extracurricularActivityProfessorWarrenKidnapped,
         earnOneBonusExperianceResolution,
         extracurricularActivityFailedStudents,
@@ -877,6 +1236,113 @@ const challengeScenarios = [
   "Aura of Faith",
   "Enthralling Encore",
 ];
+const arkhamScenariosTypes = [
+  // Night of the Zealot (no interludes)
+  { Name: "The Gathering", Type: "Scenario" },
+  { Name: "The Midnight Masks", Type: "Scenario" },
+  { Name: "The Devourer Below", Type: "Scenario" },
 
+  // The Dunwich Legacy
+  { Name: "Extracurricular Activity", Type: "Scenario" },
+  { Name: "The House Always Wins", Type: "Scenario" },
+  { Name: "Armitage's Fate", Type: "Interlude" },
+  { Name: "The Miskatonic Museum", Type: "Scenario" },
+  { Name: "The Essex County Express", Type: "Scenario" },
+  { Name: "Blood on the Altar", Type: "Scenario" },
+  { Name: "The Survivors", Type: "Interlude" },
+  { Name: "Undimensioned and Unseen", Type: "Scenario" },
+  { Name: "Where Doom Awaits", Type: "Scenario" },
+  { Name: "Lost in Time and Space", Type: "Scenario" },
+
+  // The Path to Carcosa
+  { Name: "Curtain Call", Type: "Scenario" },
+  { Name: "The Last King", Type: "Scenario" },
+  { Name: "Lunacy's Reward", Type: "Interlude" },
+  { Name: "Echoes of the Past", Type: "Scenario" },
+  { Name: "The Unspeakable Oath", Type: "Scenario" },
+  { Name: "Lost Soul", Type: "Interlude" },
+  { Name: "A Phantom of Truth", Type: "Scenario" },
+  { Name: "The Pallid Mask", Type: "Scenario" },
+  { Name: "Black Stars Rise", Type: "Scenario" },
+  { Name: "Dim Carcosa", Type: "Scenario" },
+
+  // The Forgotten Age
+  { Name: "Prologue", Type: "Prelude" },
+  { Name: "The Untamed Wilds", Type: "Scenario" },
+  { Name: "Restless Nights", Type: "Interlude" },
+  { Name: "The Doom of Eztli", Type: "Scenario" },
+  { Name: "Expedition's End", Type: "Interlude" },
+  { Name: "Threads of Fate", Type: "Scenario" },
+  { Name: "The Boundary Beyond", Type: "Scenario" },
+  { Name: "The Jungle Beckons", Type: "Interlude" },
+  { Name: "Heart of the Elders", Type: "Scenario" },
+  { Name: "The City of Archives", Type: "Scenario" },
+  { Name: "Those Held Captive", Type: "Interlude" },
+  { Name: "The Depths of Yoth", Type: "Scenario" },
+  { Name: "The Darkness", Type: "Interlude" },
+  { Name: "Shattered Aeons", Type: "Scenario" },
+  { Name: "Turn Back Time", Type: "Scenario" },
+
+  // The Circle Undone (interlude titles unverified — see note)
+  { Name: "Disappearance at the Twilight Estate", Type: "Scenario" },
+  { Name: "The Witching Hour", Type: "Scenario" },
+  { Name: "At Death's Doorstep", Type: "Scenario" },
+  { Name: "The Secret Name", Type: "Scenario" },
+  { Name: "The Wages of Sin", Type: "Scenario" },
+  { Name: "For the Greater Good", Type: "Scenario" },
+  { Name: "Union and Disillusion", Type: "Scenario" },
+  { Name: "In the Clutches of Chaos", Type: "Scenario" },
+  { Name: "Before the Black Throne", Type: "Scenario" },
+
+  // The Dream-Eaters (interlude titles unverified)
+  { Name: "Beyond the Gates of Sleep", Type: "Scenario" },
+  { Name: "Waking Nightmare", Type: "Scenario" },
+  { Name: "The Search for Kadath", Type: "Scenario" },
+  { Name: "A Thousand Shapes of Horror", Type: "Scenario" },
+  { Name: "Dark Side of the Moon", Type: "Scenario" },
+  { Name: "Point of No Return", Type: "Scenario" },
+  { Name: "Where the Gods Dwell", Type: "Scenario" },
+  { Name: "Weaver of the Cosmos", Type: "Scenario" },
+
+  // The Innsmouth Conspiracy (interlude titles unverified)
+  { Name: "The Pit of Despair", Type: "Scenario" },
+  { Name: "The Vanishing of Elina Harper", Type: "Scenario" },
+  { Name: "In Too Deep", Type: "Scenario" },
+  { Name: "Devil Reef", Type: "Scenario" },
+  { Name: "Horror in High Gear", Type: "Scenario" },
+  { Name: "A Light in the Fog", Type: "Scenario" },
+  { Name: "The Lair of Dagon", Type: "Scenario" },
+  { Name: "Into the Maelstrom", Type: "Scenario" },
+
+  // Standalone Scenarios
+  { Name: "Curse of the Rougarou", Type: "Standalone" },
+  { Name: "Carnevale of Horrors", Type: "Standalone" },
+  { Name: "The Labyrinths of Lunacy", Type: "Standalone" },
+  { Name: "Guardians of the Abyss", Type: "Standalone" },
+  { Name: "Murder at the Excelsior Hotel", Type: "Standalone" },
+  { Name: "Barkham Horror: The Meddling of Meowlathotep", Type: "Standalone" },
+  { Name: "The Blob That Ate Everything", Type: "Standalone" },
+  { Name: "War of the Outer Gods", Type: "Standalone" },
+  { Name: "Machinations Through Time", Type: "Standalone" },
+  { Name: "Fortune and Folly", Type: "Standalone" },
+  { Name: "The Blob That Ate Everything Else!", Type: "Standalone" },
+  { Name: "The Midwinter Gala", Type: "Standalone" },
+  { Name: "Film Fatale", Type: "Standalone" },
+
+  // Challenge Scenarios (Parallel Investigator packs)
+  { Name: "Read or Die", Type: "Challenge Scenario" },
+  { Name: "All or Nothing", Type: "Challenge Scenario" },
+  { Name: "Bad Blood", Type: "Challenge Scenario" },
+  { Name: "By the Book", Type: "Challenge Scenario" },
+  { Name: "Red Tide Rising", Type: "Challenge Scenario" },
+  { Name: "On the Road Again", Type: "Challenge Scenario" },
+  { Name: "Laid to Rest", Type: "Challenge Scenario" },
+  { Name: "Path of the Righteous", Type: "Challenge Scenario" },
+  { Name: "Relics of the Past", Type: "Challenge Scenario" },
+  { Name: "Hunting for Answers", Type: "Challenge Scenario" },
+  { Name: "Pistols and Pearls", Type: "Challenge Scenario" },
+  { Name: "Aura of Faith", Type: "Challenge Scenario" },
+  { Name: "Enthralling Encore", Type: "Challenge Scenario" },
+];
 // ------------------------------------------------------------ Exports ------------------------------------------------------------ //
 export { displayArkhamHorrorCampaigns };
