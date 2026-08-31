@@ -108,6 +108,18 @@ async function LoadSelectedCampaignByID(id) {
   selectedCampaign.push(result);
   return selectedCampaign;
 }
+async function LoadPlayersByCampaignId(id){
+const url = `http://localhost:3000/arkhamlcg/players/${id}`
+
+ const response = await fetch(url, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+    const players = await response.text()
+  console.log(players)
+}
 async function DisplaySelectedCampaignByID(id, name) {
   // Sets the state value to current campaign
   currentSelectedCampaignID = id;
@@ -115,6 +127,7 @@ async function DisplaySelectedCampaignByID(id, name) {
   // Fetches all active players for campaign
   activePlayers = await FetchActivePlayers(id);
   // Fetches all scenarios by the given ID
+  const allPlayersInCampaign = await LoadPlayersByCampaignId(id)
   const selectedCampaign = await LoadSelectedCampaignByID(id);
   console.log("Selected Campaign: ", selectedCampaign);
   // Sets the current scenario order number
