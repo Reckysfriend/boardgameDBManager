@@ -108,17 +108,17 @@ async function LoadSelectedCampaignByID(id) {
   selectedCampaign.push(result);
   return selectedCampaign;
 }
-async function LoadPlayersByCampaignId(id){
-const url = `http://localhost:3000/arkhamlcg/players/${id}`
+async function LoadPlayersByCampaignId(id) {
+  const url = `http://localhost:3000/arkhamlcg/players/${id}`;
 
- const response = await fetch(url, {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-      },
-    });
-    const players = await response.text()
-  console.log(players)
+  const response = await fetch(url, {
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json",
+    },
+  });
+  const players = await response.text();
+  console.log(players);
 }
 async function DisplaySelectedCampaignByID(id, name) {
   // Sets the state value to current campaign
@@ -127,7 +127,7 @@ async function DisplaySelectedCampaignByID(id, name) {
   // Fetches all active players for campaign
   activePlayers = await FetchActivePlayers(id);
   // Fetches all scenarios by the given ID
-  const allPlayersInCampaign = await LoadPlayersByCampaignId(id)
+  const allPlayersInCampaign = await LoadPlayersByCampaignId(id);
   const selectedCampaign = await LoadSelectedCampaignByID(id);
   console.log("Selected Campaign: ", selectedCampaign);
   // Sets the current scenario order number
@@ -162,19 +162,22 @@ async function DisplaySelectedCampaignByID(id, name) {
   gridDiv.append(scenarioArea);
   // Create the list container and loop through all fetched scenarios
   const scenarioList = document.createElement("ul");
-  let i = 0;
-  selectedCampaign.forEach((scenario) => {
-    const liElement = document.createElement("li");
-    liElement.classList = "odd:bg-gray-300 even:bg-gray-200 hover:bg-green-100";
-    const scenarioName = document.createElement("h1");
-    const scenarioNameText = document.createTextNode(`${scenario[i].name}`);
-    scenarioName.appendChild(scenarioNameText);
-    liElement.append(scenarioName);
+  if (selectedCampaign.length > 1) {
+    let i = 0;
+    selectedCampaign.forEach((scenario) => {
+      const liElement = document.createElement("li");
+      liElement.classList = "odd:bg-gray-300 even:bg-gray-200 hover:bg-green-100";
+      const scenarioName = document.createElement("h1");
+      const scenarioNameText = document.createTextNode(`${scenario[i].name}`);
+      scenarioName.appendChild(scenarioNameText);
+      liElement.append(scenarioName);
 
-    scenarioList.append(liElement);
-    i++;
-  });
-  scenarioArea.append(scenarioList);
+      scenarioList.append(liElement);
+      i++;
+    });
+    scenarioArea.append(scenarioList);
+  }
+
   // Button to add new scenarios
   const addButton = document.createElement("li");
   addButton.classList = "bg-gray-200 text-center hover:bg-green-100";
@@ -442,13 +445,14 @@ async function AddScenario(scenario, campaign, activePlayers) {
   // Campaign Log choices
   clearScreen(newContainer);
 
-  BuildAddScenarioTitleArea(scenario, campaign);
-  BuildAddScenarioVictoryDisplayScreen(scenario, campaign);
+  //BuildAddScenarioTitleArea(scenario, campaign);
+  tempTitlearea(scenario, campaign);
+  //BuildAddScenarioVictoryDisplayScreen(scenario, campaign);
 
-  const miscArea = createAppendableDivObject("miscArea", "flex pad-1 bg-100-purple", newContainer);
-  BuildAddScenarioCampaignLogArea(miscArea);
-  buildAddScenarioOwnershipArea(miscArea);
-  buildAddScenarioPlayerArea(miscArea);
+  //const miscArea = createAppendableDivObject("miscArea", "flex pad-1 bg-100-purple", newContainer);
+  //BuildAddScenarioCampaignLogArea(miscArea);
+  //buildAddScenarioOwnershipArea(miscArea);
+  //buildAddScenarioPlayerArea(miscArea);
 }
 async function BuildAddScenarioVictoryDisplayScreen(scenario, campaign) {
   const victoryDisplay = allScenarioResolutions[campaign][scenario].victoryDisplay;
@@ -475,15 +479,18 @@ async function BuildAddScenarioVictoryDisplayScreen(scenario, campaign) {
   newContainer.append(victoryDisplayArea);
   const test = document.Elementby;
 }
-function BuildAddScenarioTitleArea(scenario, campaign) {
-  let oldResolution = null;
-  const resolutionNumbers = Object.keys(allScenarioResolutions[campaign][scenario].resolution);
-  const div = createAppendableDivObject("titleAreaScenarioDiv", "flex h-1/5", newContainer);
-  const titleArea = createAppendableDivObject("titleAreaScenario", "bg-red-100 w-1/2", div);
+function tempTitlearea(scenario, campaign) {
+  console.log(campaign);
+  const div = createAppendableDivObject("titleAreaScenarioDiv", "flex h-1/6", newContainer);
+  const titleArea = createAppendableDivObject("titleAreaScenario", `bg-[(/img/background/${campaign}BG.jpg)]`, div);
   const title = document.createElement("h1");
   title.classList = "text-center";
   title.appendChild(document.createTextNode(`${scenario}`));
   titleArea.append(title);
+}
+function BuildAddScenarioTitleArea(scenario, campaign) {
+  let oldResolution = null;
+  const resolutionNumbers = Object.keys(allScenarioResolutions[campaign][scenario].resolution);
 
   const resolutionArea = createAppendableDivObject("resolutionAreaScenario", "bg-green-100 w-1/2", div);
   let resolutionArray = [];
