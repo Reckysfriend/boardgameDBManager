@@ -1,4 +1,4 @@
-import { displayArkhamHorrorCampaigns } from "./Games/Arkhamhorrorlcg";
+import { displayArkhamHorrorCampaigns, CreateArkhamLandingPage } from "./Games/Arkhamhorrorlcg";
 
 const allGame = ["Arkham Horror: LCG", "Lord of the Rings: LCG", "Lost Ruins of Arnak", "Final Girl", "Mage Knight"];
 
@@ -32,4 +32,4 @@ function createGameDisplay() {
 
 //createGameDisplay();
 
-displayArkhamHorrorCampaigns();
+CreateArkhamLandingPage();

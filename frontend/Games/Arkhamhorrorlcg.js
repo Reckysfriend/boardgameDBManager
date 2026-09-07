@@ -14,9 +14,11 @@ const allPlayersArray = Object.entries(allPlayersDict).map(([id, name]) => ({ id
 // Default for dropdown to check against to make sure there are valid values
 const dropdownDefault = { Name: "-", Value: "" };
 // Creates a container that holds all the new elements we need.
+/*
 const newContainer = document.createElement("div");
 newContainer.classList = "flex-1 h-screen";
 bodyElement.append(newContainer);
+*/
 async function LoadAllCampaigns() {
   const url = "http://localhost:3000/arkhamlcg/campaigns";
   const response = await fetch(url);
@@ -32,7 +34,11 @@ async function FetchAllPlayers() {
   //
   return result;
 }
-
+// ------------------------------------------------------------ Landing Page ------------------------------------------------------------ //
+async function CreateArkhamLandingPage() {
+  const mainContainer = createAppendableDivObject("mainContainer", "h-screen w-screen flex-1", bodyElement);
+  const navigationBar = createAppendableDivObject("navigationBar", "bg-red-100 min-w-1/2 min-h-1/10", mainContainer);
+}
 // ------------------------------------------------------------ Display All Campaigns ------------------------------------------------------------ //
 async function displayArkhamHorrorCampaigns() {
   // Create the Title object and allow it 20% of the screen
@@ -1359,3 +1365,4 @@ const arkhamScenariosTypes = [
 ];
 // ------------------------------------------------------------ Exports ------------------------------------------------------------ //
 export { displayArkhamHorrorCampaigns };
+export { CreateArkhamLandingPage };
