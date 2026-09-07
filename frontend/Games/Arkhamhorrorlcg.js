@@ -35,10 +35,28 @@ async function FetchAllPlayers() {
   return result;
 }
 // ------------------------------------------------------------ Landing Page ------------------------------------------------------------ //
+const mainContainer = createAppendableDivObject("mainContainer", "h-screen w-screen flex-1", bodyElement);
+const navigationBar = createAppendableDivObject("navigationBar", "bg-red-100 min-w-1/2 min-h-1/10", mainContainer);
 async function CreateArkhamLandingPage() {
-  const mainContainer = createAppendableDivObject("mainContainer", "h-screen w-screen flex-1", bodyElement);
-  const navigationBar = createAppendableDivObject("navigationBar", "bg-red-100 min-w-1/2 min-h-1/10", mainContainer);
+  CreateAddSessionModal("Arkham Horror");
 }
+
+// ------------------------------------------------------------ Temp ------------------------------------------------------------ //
+async function CreateAddSessionModal(title) {
+  const modal = document.createElement("dialog");
+  modal.classList = "h-full w-full";
+  mainContainer.append(modal);
+
+  const modalContainer = createAppendableDivObject("modalContainer", "grid h-full w-full", modal);
+  const titleArea = createAppendableDivObject("modalTitle", "bg-yellow-100", modalContainer);
+  const tabArea = createAppendableDivObject("tabArea", "bg-blue-100", modalContainer);
+  const informationArea = createAppendableDivObject("informationArea", "bg-red-100", modalContainer);
+  const submitArea = createAppendableDivObject("submitArea", "flex", modalContainer);
+  const submitButton = createAppendableButtonObject("Submit", "sessionSubmitButton", submitArea, "", "content-right");
+
+  createAppendableButtonObject("Test Button", "testButton", navigationBar, () => showModal(modal), "");
+}
+
 // ------------------------------------------------------------ Display All Campaigns ------------------------------------------------------------ //
 async function displayArkhamHorrorCampaigns() {
   // Create the Title object and allow it 20% of the screen
