@@ -35,28 +35,77 @@ async function FetchAllPlayers() {
   return result;
 }
 // ------------------------------------------------------------ Landing Page ------------------------------------------------------------ //
-const mainContainer = createAppendableDivObject("mainContainer", "h-screen w-screen flex-1", bodyElement);
-const navigationBar = createAppendableDivObject("navigationBar", "bg-red-100 min-w-1/2 min-h-1/10", mainContainer);
+
 async function CreateArkhamLandingPage() {
-  CreateAddSessionModal("Arkham Horror");
+  const mainContainer = createAppendableDivObject("mainContainer", "h-screen w-screen flex-1", bodyElement);
+  const navigationBar = createAppendableDivObject("navigationBar", "bg-red-100 min-w-1/2 min-h-1/10", mainContainer);
+  const scenarioButton = createAppendableButtonObject("Scenario", "", navigationBar, () => ScenarioPicker("The Dunwich Legacy"));
 }
 
 // ------------------------------------------------------------ Temp ------------------------------------------------------------ //
-async function CreateAddSessionModal(title) {
+
+function ScenarioPicker(campaign) {
+  const scenarios = allCampaignScenarios[campaign];
+  const modal = document.createElement("dialog");
+  modal.id = "scenarioPickerModal";
+  modal.classList = "h-full w-full bg-gray-100 grid grid-cols-3";
+  mainContainer.append(modal);
+
+  // Close Button
+  const closeButton = createAppendableButtonObject(
+    "Close",
+    "closeButtonScenarioPicker",
+    modal,
+    () => {
+      closeModal(modal);
+      modal.remove();
+    },
+    "absolute bottom-0 right-0 bg-red-200 hover:bg-red-100 rounded-md p-1 m-2",
+  );
+  // Scenario Boxes
+  scenarios.forEach((scenario) => {
+    const div = createAppendableDivObject(`${scenario}ScenarioPickerDiv`, "m-3 hover:bg-gray-200 border-2 border-solid", modal);
+    const title = createAppendableH1Object(`${scenario}ScenarioPickerTitle`, `${scenario}`, "text-center align-middle", div);
+    div.addEventListener("click", () => {
+      modal.remove();
+      CreateAddSessionModal(campaign, scenario);
+    });
+  });
+  showModal(modal);
+}
+
+async function CreateAddSessionModal(campaign, scenario) {
   const modal = document.createElement("dialog");
   modal.classList = "h-full w-full";
   mainContainer.append(modal);
 
   const modalContainer = createAppendableDivObject("modalContainer", "grid h-full w-full", modal);
   const titleArea = createAppendableDivObject("modalTitle", "bg-yellow-100", modalContainer);
-  const tabArea = createAppendableDivObject("tabArea", "bg-blue-100", modalContainer);
-  const informationArea = createAppendableDivObject("informationArea", "bg-red-100", modalContainer);
-  const submitArea = createAppendableDivObject("submitArea", "flex", modalContainer);
-  const submitButton = createAppendableButtonObject("Submit", "sessionSubmitButton", submitArea, "", "content-right");
-
-  createAppendableButtonObject("Test Button", "testButton", navigationBar, () => showModal(modal), "");
+  createAppendableH1Object("", `${scenario}`, "", titleArea);
+  const closeButton = createAppendableButtonObject("Close", "sessionSubmitButton", modalContainer, () => modal.remove(), "absolute bottom-0 right-0");
+  CreateTabArea(campaign, scenario);
+  showModal(modal);
 }
+// Returns all unique EAV values to avoid creating uncessery selection tabs
+function CreateTabArea(campaign, scenario) {
+  const uniqueEntity = FindUniqueEavEntity(campaign, scenario);
+  console.log(uniqueEntity);
+}
+function FindUniqueEavEntity(campaign, scenario) {
+  const resolutions = allScenarioResolutions[campaign][scenario].resolution;
+  const flat = Object.values(resolutions).flat();
 
+  let uniqueEntity = [];
+  for (const eav in flat) {
+    const value = flat[eav].entity;
+
+    const found = uniqueEntity.find((item) => item === value);
+    if (found === undefined) {
+      uniqueEntity.push(value);
+    }
+  }
+  return uniqueEntity;
+}
 // ------------------------------------------------------------ Display All Campaigns ------------------------------------------------------------ //
 async function displayArkhamHorrorCampaigns() {
   // Create the Title object and allow it 20% of the screen
