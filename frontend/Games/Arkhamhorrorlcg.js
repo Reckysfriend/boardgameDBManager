@@ -8,17 +8,20 @@ let currentSelectedCampaignScenarioOrder = null;
 let activePlayers = [];
 // Fetches all Arkham Horror Campaigns from my backend
 let allCampaigns = await LoadAllCampaigns();
+// Keeps track of the previously selected resolution for EAV updates
+let oldResolution = [];
+// Stores the all EAV values currently selected
+let entityAttributeValueObject = [];
 // Fetches all listed players in DB
 const allPlayersDict = await FetchAllPlayers();
 const allPlayersArray = Object.entries(allPlayersDict).map(([id, name]) => ({ id, name }));
 // Default for dropdown to check against to make sure there are valid values
 const dropdownDefault = { Name: "-", Value: "" };
 // Creates a container that holds all the new elements we need.
-/*
-const newContainer = document.createElement("div");
-newContainer.classList = "flex-1 h-screen";
-bodyElement.append(newContainer);
-*/
+const mainContainer = document.createElement("div");
+mainContainer.classList = "flex-1 h-screen";
+bodyElement.append(mainContainer);
+
 async function LoadAllCampaigns() {
   const url = "http://localhost:3000/arkhamlcg/campaigns";
   const response = await fetch(url);
@@ -37,13 +40,11 @@ async function FetchAllPlayers() {
 // ------------------------------------------------------------ Landing Page ------------------------------------------------------------ //
 
 async function CreateArkhamLandingPage() {
-  const mainContainer = createAppendableDivObject("mainContainer", "h-screen w-screen flex-1", bodyElement);
-  const navigationBar = createAppendableDivObject("navigationBar", "bg-red-100 min-w-1/2 min-h-1/10", mainContainer);
-  const scenarioButton = createAppendableButtonObject("Scenario", "", navigationBar, () => ScenarioPicker("The Dunwich Legacy"));
+  displayArkhamHorrorCampaigns();
 }
 
 // ------------------------------------------------------------ Temp ------------------------------------------------------------ //
-
+// Displays all Scenarios that can be added to the current Campaign
 function ScenarioPicker(campaign) {
   const scenarios = allCampaignScenarios[campaign];
   const modal = document.createElement("dialog");
@@ -79,21 +80,51 @@ async function CreateAddSessionModal(campaign, scenario) {
   modal.classList = "h-full w-full";
   mainContainer.append(modal);
 
-  const modalContainer = createAppendableDivObject("modalContainer", "grid h-full w-full", modal);
-  const titleArea = createAppendableDivObject("modalTitle", "bg-yellow-100", modalContainer);
+  const modalContainer = createAppendableDivObject("modalContainer", "h-full w-full", modal);
+
+  // Creates area for title and resolution dropdown
+  const titleArea = createAppendableDivObject("modalTitle", "bg-red-100 h-1/8 w-full", modalContainer);
   createAppendableH1Object("", `${scenario}`, "", titleArea);
-  const closeButton = createAppendableButtonObject("Close", "sessionSubmitButton", modalContainer, () => modal.remove(), "absolute bottom-0 right-0");
-  CreateTabArea(campaign, scenario);
+  // Tab area for each entity type that needs to be displayed and area for information
+  const entityContainer = createAppendableDivObject("entityContainer", "bg-green-100 w-full", modalContainer);
+  const tabArea = createAppendableDivObject("tabAreaContainer", "bg-gray-100 flex w-full", entityContainer);
+  const entityArea = createAppendableDivObject("entityArea", "bg-yellow-100 overflow-x-auto flex w-full max-h-24", entityContainer);
+
+  // Adds function to dropdown to rebuild the tabs based on which resolution is picked
+  const dropdown = CreateResolutionDropdown(campaign, scenario, titleArea);
+  dropdown.addEventListener("change", (event) => {
+    const resolution = event.target.value;
+    UpdateEAV(campaign, scenario, resolution);
+    CreateTabArea(campaign, scenario, tabArea, resolution);
+    UpdateCampaignLog();
+  });
+
+  createAppendableButtonObject("Close", "sessionSubmitButton", modalContainer, () => modal.remove(), "absolute bottom-0 right-0");
   showModal(modal);
 }
-// Returns all unique EAV values to avoid creating uncessery selection tabs
-function CreateTabArea(campaign, scenario) {
-  const uniqueEntity = FindUniqueEavEntity(campaign, scenario);
-  console.log(uniqueEntity);
+
+function CreateTabArea(campaign, scenario, container, resolution) {
+  clearContainer(container);
+  const uniqueEntity = FindUniqueEavEntity(campaign, scenario, resolution);
+  uniqueEntity.push("victory_display");
+
+  const entityFunctionDict = {
+    campaign_log: UpdateCampaignLog,
+    chaos_token: UpdateChaosTokens,
+    story_asset: UpdateOwnership,
+    victory_display: () => UpdateVictoryDisplay(scenario, campaign),
+  };
+  uniqueEntity.forEach((entity) => {
+    const div = createAppendableDivObject("", "m-1 hover:bg-gray-200 border-2 border-solid w-full", container);
+    const title = createAppendableH1Object("", `${entity}`, "text-center align-middle", div);
+    div.addEventListener("click", entityFunctionDict[entity]);
+  });
 }
-function FindUniqueEavEntity(campaign, scenario) {
+// Returns all unique EAV values to avoid creating uncessery selection tabs
+function FindUniqueEavEntity(campaign, scenario, resolution) {
   const resolutions = allScenarioResolutions[campaign][scenario].resolution;
-  const flat = Object.values(resolutions).flat();
+  const selectedResolution = resolutions[resolution];
+  const flat = Object.values(selectedResolution).flat();
 
   let uniqueEntity = [];
   for (const eav in flat) {
@@ -106,6 +137,146 @@ function FindUniqueEavEntity(campaign, scenario) {
   }
   return uniqueEntity;
 }
+function CreateResolutionDropdown(campaign, scenario, parentObject) {
+  let oldResolution = null;
+  const resolutionNumbers = Object.keys(allScenarioResolutions[campaign][scenario].resolution);
+
+  let resolutionArray = [];
+  resolutionNumbers.forEach((res) => {
+    if (res === "0") {
+      const res0 = { Name: "No resolution was reached", Value: res };
+      resolutionArray.push(res0);
+    } else {
+      const resolution = { Name: `Resolution ${res}`, Value: res };
+      resolutionArray.push(resolution);
+    }
+  });
+  const resolutionDropdown = createAppendableDropdownObject("scenarioResolution", resolutionArray);
+  parentObject.append(resolutionDropdown);
+  return resolutionDropdown;
+}
+function UpdateEAV(campaign, scenario, resolution) {
+  const currentResolution = allScenarioResolutions[campaign][scenario].resolution[resolution];
+
+  // Removes any EAV entires from the old resolution
+  if (oldResolution !== null) {
+    oldResolution.forEach((res) => {
+      const uniqueID = entityAttributeValueObject.find((entity) => entity.UUID == res.UUID);
+      if (uniqueID !== undefined) {
+        entityAttributeValueObject = entityAttributeValueObject.filter((entity) => entity.UUID !== res.UUID);
+      }
+    });
+  }
+  // Adds the correct EAV entires for the newly selected resolution
+  currentResolution.forEach((res) => {
+    const uniqueID = entityAttributeValueObject.find((entity) => entity.UUID == res.UUID);
+    if (uniqueID == undefined) {
+      entityAttributeValueObject.push(res);
+    }
+  });
+  oldResolution = currentResolution;
+  console.log(entityAttributeValueObject);
+}
+function UpdateCampaignLog() {
+  const container = document.getElementById("entityArea");
+  clearContainer(container);
+  const listElement = document.getElementById("campaignList");
+  if (listElement) {
+    list.remove();
+  }
+  const list = document.createElement("ul");
+  container.append(list);
+  entityAttributeValueObject.forEach((entity) => {
+    if (entity.entity === "campaign_log") {
+      const liElement = document.createElement("li");
+      const p = document.createElement("p");
+      p.textContent = entity.value;
+      liElement.append(p);
+
+      list.append(liElement);
+    }
+  });
+}
+function UpdateExperianceEarnt(eav) {
+  const xpElement = document.getElementById("campaignLogExperiance");
+  let totalXP = 0;
+  eav.forEach((entity) => {
+    if (entity.key === "xp_gained") {
+      totalXP += entity.value;
+    }
+  });
+  xpElement.textContent = `XP: ${totalXP}`;
+}
+function UpdateChaosTokens() {
+  const container = document.getElementById("entityArea");
+  clearContainer(container);
+
+  const tokenElement = createAppendablePElement("", "", "", container);
+  let tokenText = "";
+  entityAttributeValueObject.forEach((entity) => {
+    if (entity.entity === "chaos_token") {
+      if (entity.key.includes("added")) {
+        tokenText += `+${entity.value} ${entity.name}`;
+      } else if (entity.key.includes("removed")) {
+        tokenText += `-${entity.value} ${entity.name}`;
+      }
+    }
+  });
+  tokenElement.textContent = tokenText;
+}
+function UpdateOwnership() {
+  const container = document.getElementById("entityArea");
+  clearContainer(container);
+
+  const ownershipElement = createAppendableDivObject("", "", container);
+  let activeInvestigators = [];
+
+  activePlayers.forEach((player) => {
+    const invest = { Name: player.investigatorName, Value: player.investigatorName };
+    activeInvestigators.push(invest);
+  });
+  entityAttributeValueObject.forEach((entity) => {
+    if (entity.key === "ownership") {
+      const label = document.createElement("label");
+      label.for = `${entity.name}Ownership`;
+      label.append(document.createTextNode(`${entity.name}:  `));
+
+      const activePlayersDropdown = createAppendableDropdownObject(`${entity.name}Ownership`, activeInvestigators);
+
+      activePlayersDropdown.addEventListener("change", () => {
+        entity.value = activePlayersDropdown.value;
+        console.log(entityAttributeValueObject);
+      });
+
+      ownershipElement.append(label);
+      ownershipElement.append(activePlayersDropdown);
+    }
+  });
+}
+function UpdateVictoryDisplay(scenario, campaign) {
+  const victoryDisplay = allScenarioResolutions[campaign][scenario].victoryDisplay;
+
+  const container = document.getElementById("entityArea");
+  clearContainer(container);
+
+  victoryDisplay.forEach((victory) => {
+    const img = document.createElement("img");
+    img.classList = "w-auto grayscale object-contain";
+    img.addEventListener("click", () => {
+      const classes = img.classList;
+      classes.toggle("grayscale");
+      const victoryDisplayID = entityAttributeValueObject.find((entity) => entity.UUID == victory.UUID);
+      if (victoryDisplayID == undefined) {
+        entityAttributeValueObject.push(victory);
+      } else {
+        entityAttributeValueObject = entityAttributeValueObject.filter((entity) => entity.UUID !== victory.UUID);
+      }
+    });
+
+    img.src = `/img/arkham_horror_lcg/Victory Display/${victory.img}`;
+    container.append(img);
+  });
+}
 // ------------------------------------------------------------ Display All Campaigns ------------------------------------------------------------ //
 async function displayArkhamHorrorCampaigns() {
   // Create the Title object and allow it 20% of the screen
@@ -113,7 +284,7 @@ async function displayArkhamHorrorCampaigns() {
   const titelText = document.createTextNode(`${"Arkham Horror: LCG"}`);
   title.classList = "text-center bg-red-100 h-1/5";
   title.appendChild(titelText);
-  newContainer.append(title);
+  mainContainer.append(title);
 
   //Create a container for the search bar, add and remove
   const searchbarDiv = document.createElement("div");
@@ -132,7 +303,7 @@ async function displayArkhamHorrorCampaigns() {
 
   // Appends objects to div
   searchbarDiv.append(searchbarText);
-  newContainer.append(searchbarDiv);
+  mainContainer.append(searchbarDiv);
 
   //Create a list element and fill it with each campaign from DB
   const campaignList = document.createElement("ul");
@@ -169,8 +340,8 @@ async function displayArkhamHorrorCampaigns() {
     liElement.append(removeButton);
     campaignList.append(liElement);
   });
-  newContainer.append(campaignList);
-  bodyElement.append(newContainer);
+  mainContainer.append(campaignList);
+  bodyElement.append(mainContainer);
 }
 // ------------------------------------------------------------ Display Selected Campaign by ID ------------------------------------------------------------ //
 async function LoadSelectedCampaignByID(id) {
@@ -193,7 +364,7 @@ async function LoadPlayersByCampaignId(id) {
   const players = await response.text();
   console.log(players);
 }
-async function DisplaySelectedCampaignByID(id, name) {
+async function DisplaySelectedCampaignByID(id, campaign) {
   // Sets the state value to current campaign
   currentSelectedCampaignID = id;
 
@@ -206,13 +377,13 @@ async function DisplaySelectedCampaignByID(id, name) {
   // Sets the current scenario order number
   currentSelectedCampaignScenarioOrder = selectedCampaign.length;
   // Clears the screen
-  clearScreen(newContainer);
+  clearContainer(mainContainer);
   // Create the Title object and allow it 20% of the screen
   const title = document.createElement("h1");
-  const titelText = document.createTextNode(`${name}`);
+  const titelText = document.createTextNode(`${campaign}`);
   title.classList = "text-center bg-red-100 h-1/5";
   title.appendChild(titelText);
-  newContainer.append(title);
+  mainContainer.append(title);
   // Grid for area below title
   const gridDiv = createAppendableDivObject("grid", "grid grid-cols-8 h-4/5", bodyElement);
   // Player Area
@@ -255,7 +426,7 @@ async function DisplaySelectedCampaignByID(id, name) {
   const addButton = document.createElement("li");
   addButton.classList = "bg-gray-200 text-center hover:bg-green-100";
   addButton.addEventListener("click", () => {
-    addScenarioDialog.showModal();
+    ScenarioPicker(campaign);
   });
   const addScenarioButtonTitle = document.createElement("h1");
   const addScenarioButtonTitleText = document.createTextNode(" [ + ]");
@@ -264,39 +435,8 @@ async function DisplaySelectedCampaignByID(id, name) {
   scenarioList.append(addButton);
 
   scenarioArea.append(scenarioList);
-  // Modal for new scenario
-  const addScenarioDialog = document.createElement("dialog");
-  const addScenarioH1 = document.createElement("h1");
-  const addScenarioH1Text = document.createTextNode("Choose the next scenario:");
-  addScenarioH1.append(addScenarioH1Text);
-  addScenarioDialog.append(addScenarioH1);
-
-  const scenarioAddDropdown = document.createElement("select");
-
-  addDropdownWithOptGroups(allCampaignScenarios[name], scenarioAddDropdown, name);
-  addDropdownWithOptGroups(standaloneScenarios, scenarioAddDropdown, "Standalone");
-  addDropdownWithOptGroups(challengeScenarios, scenarioAddDropdown, "Challange Scenarios");
-  addScenarioDialog.append(scenarioAddDropdown);
-  //Confirm Button
-  const confirmButton = document.createElement("button");
-  confirmButton.classList = "bg-green-200 hover:bg-green-300 text-center";
-  confirmButton.append(document.createTextNode("Confirm"));
-  confirmButton.addEventListener("click", () => {
-    AddScenario(scenarioAddDropdown.value, name, activePlayers);
-  });
-  addScenarioDialog.append(confirmButton);
-  // Close Button
-  const closeDialogButton = document.createElement("button");
-  closeDialogButton.classList = "bg-red-100";
-  closeDialogButton.append(document.createTextNode("X"));
-  closeDialogButton.addEventListener("click", () => {
-    addScenarioDialog.close();
-  });
-  addScenarioDialog.append(closeDialogButton);
-
-  scenarioArea.append(addScenarioDialog);
   //Appends all to container
-  newContainer.append(gridDiv);
+  mainContainer.append(gridDiv);
 }
 async function FetchActivePlayers(id) {
   const url = `http://localhost:3000/arkhamlcg/campaigns/players/${id}`;
@@ -492,14 +632,6 @@ function formValidilityCheck() {
     return false;
   }
 }
-function createAppendableDivObject(id, classList, parentObject) {
-  const div = document.createElement("div");
-  div.classList = classList;
-  div.id = id;
-  parentObject.append(div);
-
-  return div;
-}
 // ------------------------------------------------------------ Add & Remove Players ------------------------------------------------------------ //
 // Dropdown for all investigators
 // Dropdown for all players
@@ -507,7 +639,6 @@ function createAppendableDivObject(id, classList, parentObject) {
 
 // ------------------------------------------------------------ Add & Remove Scenario ------------------------------------------------------------ //
 function AddScenarioToCampaign() {}
-let entityAttributeValueObject = [];
 async function AddScenario(scenario, campaign, activePlayers) {
   // Pop up that shows all that campaigns scenarios, each standalone, each challange scenario.
   // When you click on one it takes you to a form based on that scenario.
@@ -516,45 +647,21 @@ async function AddScenario(scenario, campaign, activePlayers) {
   // Invest info
   // Victory Display
   // Campaign Log choices
-  clearScreen(newContainer);
+  clearContainer(mainContainer);
 
   //BuildAddScenarioTitleArea(scenario, campaign);
   tempTitlearea(scenario, campaign);
   //BuildAddScenarioVictoryDisplayScreen(scenario, campaign);
 
-  //const miscArea = createAppendableDivObject("miscArea", "flex pad-1 bg-100-purple", newContainer);
+  //const miscArea = createAppendableDivObject("miscArea", "flex pad-1 bg-100-purple", mainContainer);
   //BuildAddScenarioCampaignLogArea(miscArea);
   //buildAddScenarioOwnershipArea(miscArea);
   //buildAddScenarioPlayerArea(miscArea);
 }
-async function BuildAddScenarioVictoryDisplayScreen(scenario, campaign) {
-  const victoryDisplay = allScenarioResolutions[campaign][scenario].victoryDisplay;
-  const victoryDisplayArea = document.createElement("div");
-  victoryDisplayArea.classList = "flex h-1/3 overflow-x-auto gap-2";
-  victoryDisplay.forEach((victory) => {
-    const img = document.createElement("img");
-    img.classList = "max-w max-h flex-shrink-0 grayscale";
-    img.addEventListener("click", () => {
-      const classes = img.classList;
-      classes.toggle("grayscale");
-      const victoryDisplayID = entityAttributeValueObject.find((entity) => entity.UUID == victory.UUID);
-      if (victoryDisplayID == undefined) {
-        entityAttributeValueObject.push(victory);
-      } else {
-        entityAttributeValueObject = entityAttributeValueObject.filter((entity) => entity.UUID !== victory.UUID);
-      }
-      ScenarioHandler(entityAttributeValueObject);
-    });
 
-    img.src = `/img/arkham_horror_lcg/Victory Display/${victory.img}`;
-    victoryDisplayArea.append(img);
-  });
-  newContainer.append(victoryDisplayArea);
-  const test = document.Elementby;
-}
 function tempTitlearea(scenario, campaign) {
   console.log(campaign);
-  const div = createAppendableDivObject("titleAreaScenarioDiv", "flex h-1/6", newContainer);
+  const div = createAppendableDivObject("titleAreaScenarioDiv", "flex h-1/6", mainContainer);
   const titleArea = createAppendableDivObject("titleAreaScenario", `bg-[(/img/background/${campaign}BG.jpg)]`, div);
   const title = document.createElement("h1");
   title.classList = "text-center";
@@ -562,22 +669,6 @@ function tempTitlearea(scenario, campaign) {
   titleArea.append(title);
 }
 function BuildAddScenarioTitleArea(scenario, campaign) {
-  let oldResolution = null;
-  const resolutionNumbers = Object.keys(allScenarioResolutions[campaign][scenario].resolution);
-
-  const resolutionArea = createAppendableDivObject("resolutionAreaScenario", "bg-green-100 w-1/2", div);
-  let resolutionArray = [];
-  resolutionNumbers.forEach((res) => {
-    if (res === "0") {
-      const res0 = { Name: "No resolution was reached", Value: res };
-      resolutionArray.push(res0);
-    } else {
-      const resolution = { Name: `Resolution ${res}`, Value: res };
-      resolutionArray.push(resolution);
-    }
-  });
-  const resolutionDropdown = createAppendableDropdownObject("scenarioResolution", resolutionArray);
-  resolutionArea.append(resolutionDropdown);
   const playedAt = createAppendableDateObject("playedAt", "", "playedAt", resolutionArea);
   const playLocations = [
     { Name: "Table", Value: "Table" },
@@ -592,32 +683,6 @@ function BuildAddScenarioTitleArea(scenario, campaign) {
     () => LogScenario(GenerateDatabaseObject(scenario)),
     "bg-red-200",
   );
-
-  const allSelectElements = document.getElementsByName(resolutionDropdown.name);
-  allSelectElements.forEach((element) => {
-    element.addEventListener("change", (event) => {
-      const currentResolution = allScenarioResolutions[campaign][scenario].resolution[event.target.value];
-
-      // Removes any EAV entires from the old resolution
-      if (oldResolution !== null) {
-        oldResolution.forEach((res) => {
-          const uniqueID = entityAttributeValueObject.find((entity) => entity.UUID == res.UUID);
-          if (uniqueID !== undefined) {
-            entityAttributeValueObject = entityAttributeValueObject.filter((entity) => entity.UUID !== res.UUID);
-          }
-        });
-      }
-      // Adds the correct EAV entires for the newly selected resolution
-      currentResolution.forEach((res) => {
-        const uniqueID = entityAttributeValueObject.find((entity) => entity.UUID == res.UUID);
-        if (uniqueID == undefined) {
-          entityAttributeValueObject.push(res);
-        }
-      });
-      oldResolution = currentResolution;
-      ScenarioHandler(entityAttributeValueObject);
-    });
-  });
 }
 function BuildAddScenarioCampaignLogArea(miscDiv) {
   const div = createAppendableDivObject("campaignLogArea", "w-1/3 h-1/4 bg-blue-200 flex flex-col", miscDiv);
@@ -701,75 +766,7 @@ function buildAddScenarioPlayerArea(miscDiv) {
     i++;
   });
 }
-function UpdateCampaignLog(eav) {
-  const listElement = document.getElementById("campaignLogList");
-  listElement.replaceChildren();
-  eav.forEach((entity) => {
-    if (entity.entity === "campaign_log") {
-      const liElement = document.createElement("li");
-      const p = document.createElement("p");
-      p.textContent = entity.value;
-      liElement.append(p);
 
-      listElement.append(liElement);
-    }
-  });
-}
-function UpdateExperianceEarnt(eav) {
-  const xpElement = document.getElementById("campaignLogExperiance");
-  let totalXP = 0;
-  eav.forEach((entity) => {
-    if (entity.key === "xp_gained") {
-      totalXP += entity.value;
-    }
-  });
-  xpElement.textContent = `XP: ${totalXP}`;
-}
-function UpdateChaosTokens(eav) {
-  const tokenElement = document.getElementById("campaignLogToken");
-  let tokenText = "";
-  eav.forEach((entity) => {
-    if (entity.entity === "chaos_token") {
-      if (entity.key.includes("added")) {
-        tokenText += `+${entity.value} ${entity.name}`;
-      } else if (entity.key.includes("removed")) {
-      }
-    }
-  });
-  tokenElement.textContent = tokenText;
-}
-function UpdateOwnership(eav) {
-  const ownershipElement = document.getElementById("ownershipCardName");
-  ownershipElement.replaceChildren();
-  let activeInvestigators = [];
-
-  activePlayers.forEach((player) => {
-    const invest = { Name: player.investigatorName, Value: player.investigatorName };
-    activeInvestigators.push(invest);
-  });
-  eav.forEach((entity) => {
-    if (entity.key === "ownership") {
-      const label = document.createElement("label");
-      label.for = `${entity.name}Ownership`;
-      label.append(document.createTextNode(`${entity.name}:  `));
-
-      const activePlayersDropdown = createAppendableDropdownObject(`${entity.name}Ownership`, activeInvestigators);
-
-      activePlayersDropdown.addEventListener("change", () => {
-        entity.value = activePlayersDropdown.value;
-      });
-
-      ownershipElement.append(label);
-      ownershipElement.append(activePlayersDropdown);
-    }
-  });
-}
-function ScenarioHandler(eav) {
-  UpdateCampaignLog(eav);
-  UpdateExperianceEarnt(eav);
-  UpdateChaosTokens(eav);
-  UpdateOwnership(eav);
-}
 async function GenerateDatabaseObject(scenario) {
   // Player Entry
 
@@ -859,11 +856,19 @@ async function LogScenario(data) {
 // ------------------------------------------------------------ Utility Functions ------------------------------------------------------------ //
 async function updateDisplay() {
   allCampaigns = await LoadAllCampaigns();
-  newContainer.replaceChildren();
+  mainContainer.replaceChildren();
   displayArkhamHorrorCampaigns();
 }
-function clearScreen(constainer) {
+function clearContainer(constainer) {
   constainer.replaceChildren();
+}
+function createAppendableDivObject(id, classList, parentObject) {
+  const div = document.createElement("div");
+  div.classList = classList;
+  div.id = id;
+  parentObject.append(div);
+
+  return div;
 }
 function addDropdownWithOptGroups(array, selectElement, optName) {
   const optgroup = document.createElement("optgroup");
