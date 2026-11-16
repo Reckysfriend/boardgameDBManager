@@ -1,1 +1,39 @@
 @import "tailwindcss";
+
+@font-face {
+  font-family: "Inter";
+  src: url("./fonts/InterVariable.ttf") format("ttf");
+  font-weight: 100 900;
+  font-display: swap;
+}
+
+@theme {
+  --font-sans: "Inter", sans-serif;
+
+  --color-page: #0d0f12;
+  --color-card: #161a20;
+  --color-text: #e8eaed;
+
+  --color-players: #a58bff;
+  --color-progress: #6aa8ff;
+  --color-records: #4fc9c0;
+  --color-components: #d98ad8;
+  --color-stats: #ff9a52;
+
+  --color-action: #f2b84b;
+  --color-win: #56b4e9;
+  --color-loss: #f0668a;
+  --color-horror: #7a86ff;
+
+  --color-game-arkham: #e8a06a;
+  --color-game-marvel: #7fc06a;
+  --color-game-arnak: #4dbfa6;
+  --color-game-lotr: #6ea8e8;
+
+  --container-content: 1280px;
+}
+
+body {
+  background-color: var(--color-page);
+  color: var(--color-text);
+}
